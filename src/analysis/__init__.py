@@ -7,7 +7,7 @@ from .differential import (
 )
 from .features import (
     analyze_features,
-    rank_for_archaeology,
+    rank_for_features,
     generate_analysis_report,
     detect_linear_features,
     analyze_frequency_content

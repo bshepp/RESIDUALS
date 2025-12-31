@@ -1,14 +1,14 @@
-# DIVERGE: Differential Verification of Ground-truth Extraction
+# RESIDUALS: Multi-Method Differential Feature Detection
 
-**A framework for archaeological feature detection in LiDAR DEMs using multi-level differential analysis.**
+**A framework for feature detection in Digital Elevation Models using systematic decomposition and differential analysis.**
 
 ![Sample Output](results/visualizations/residuals_grid_preview.png)
 
 ## What Is This?
 
-DIVERGE systematically tests combinations of signal decomposition and upsampling methods to identify which combinations best reveal hidden terrain features. The core insight:
+RESIDUALS systematically tests combinations of signal decomposition and upsampling methods to identify which combinations best reveal features in elevation data. The core insight:
 
-> *Different method combinations have characteristic "failure modes" that selectively preserve or eliminate different feature types. By computing differentials between outputs, we create feature-specific extraction filters.*
+> *Different method combinations have characteristic behaviors that selectively preserve or eliminate different feature types. By computing differentials between outputs, we create feature-specific extraction filters.*
 
 ## The 4-Level Differential Hierarchy
 
@@ -24,8 +24,8 @@ DIVERGE systematically tests combinations of signal decomposition and upsampling
 
 ```bash
 # Clone and install
-git clone https://github.com/bshepp/DIVERGE.git
-cd DIVERGE
+git clone https://github.com/bshepp/RESIDUALS.git
+cd RESIDUALS
 pip install -r requirements.txt
 
 # Run with included test DEM
@@ -40,12 +40,14 @@ python run_experiment.py --dem data/test_dems/your_dem.npy
 
 | Method | How It Works | Good For |
 |--------|--------------|----------|
-| **Gaussian** | Local blur → subtract | Drainage channels, valleys |
+| **Gaussian** | Local blur → subtract | Smooth gradients, valleys |
 | **Bilateral** | Edge-preserving blur | Features with sharp boundaries |
 | **Wavelet** | Multi-scale frequency separation | Scale-specific features |
-| **Morphological** | Shape-based opening/closing | Mounds, peaks, ridges |
+| **Morphological** | Shape-based opening/closing | Peaks, ridges, depressions |
 | **Top-Hat** | Small feature extraction | Small isolated features |
-| **Polynomial** | Global surface fitting | Regional-scale modifications |
+| **Polynomial** | Global surface fitting | Regional-scale variations |
+
+Extended methods include: anisotropic Gaussian, median, DoG, LoG, guided filter, anisotropic diffusion, rolling ball, and multiple structuring element shapes.
 
 ## Upsampling Methods
 
@@ -56,21 +58,35 @@ python run_experiment.py --dem data/test_dems/your_dem.npy
 | **B-Spline** | Smoother (order 2) |
 | **FFT Zero-pad** | Band-limited, Gibbs ringing at edges |
 
+Extended methods include: nearest, bilinear, quadratic, quartic, quintic, windowed sinc (Hamming, Blackman), Catmull-Rom, Mitchell-Netravali, and edge-directed interpolation.
+
+## Exhaustive Parameter Exploration
+
+```bash
+# Run all 39,731 parameter combinations
+python run_exhaustive.py --output results/exhaustive
+
+# Limited test run
+python run_exhaustive.py --max-decomp 2 --max-upsamp 2
+```
+
+Generates comprehensive documentation of all method combinations with statistics and hashes.
+
 ## Output Visualization
 
 The main output is a grid showing:
 - **Rows**: Decomposition methods
 - **Columns**: Upsampling methods + ground truth comparisons + divergence metrics
 
-Each cell reveals different terrain features. The Δ columns (pink-green) show where each method matches or misses ground truth features. The divergence columns (hot/viridis) show where methods disagree.
+Each cell reveals different features. The Δ columns show where each method matches or misses ground truth features. The divergence columns show where methods disagree — useful for identifying features that are method-sensitive.
 
 ## Project Structure
 
 ```
-DIVERGE/
+RESIDUALS/
 ├── src/
-│   ├── decomposition/     # 6 decomposition algorithms
-│   ├── upsampling/        # 4 upsampling methods  
+│   ├── decomposition/     # 25 decomposition algorithms
+│   ├── upsampling/        # 19 upsampling methods  
 │   ├── analysis/          # Differential computation, feature detection
 │   └── utils/             # Visualization, I/O
 ├── data/test_dems/        # Sample DEMs
@@ -81,18 +97,19 @@ DIVERGE/
 │   └── debug_archive/     # Bug documentation
 ├── generate_test_dem.py   # Create DEM from LiDAR tiles
 ├── run_experiment.py      # Main experiment runner
-└── check_correlation.py   # Sanity check script
+└── run_exhaustive.py      # Full parameter space exploration
 ```
 
-## Archaeological Applications
+## Applications
 
-The framework detects:
-- **Linear features** (buried roads, walls, field boundaries)
-- **Mound/pit features** (burial mounds, storage pits)
-- **Periodic patterns** (agricultural terracing, urban grids)
-- **Landscape modifications** (land leveling, canal systems)
+Feature detection in:
+- **Terrain analysis** — ridges, valleys, drainage patterns
+- **Infrastructure** — roads, embankments, foundations
+- **Natural features** — geological formations, vegetation patterns
+- **Change detection** — comparing DEMs over time
+- **Quality assessment** — identifying artifacts in elevation data
 
-Different decomposition methods excel at different feature types — the grid visualization helps identify which combination works best for your specific targets.
+Different decomposition methods excel at different feature types — the grid visualization helps identify which combination works best for your specific use case.
 
 ## Known Limitations
 
@@ -104,30 +121,29 @@ See `results/debug_archive/README.md` for documented bugs and fixes.
 
 ## Contributing
 
-We welcome contributions! Areas of interest:
+Contributions welcome. Areas of interest:
 - Additional decomposition methods
 - GPU acceleration for large DEMs
 - Machine learning feature classifiers
-- Integration with archaeological GIS workflows
-- Validation on sites with known features
+- Integration with GIS workflows
 
 ## Citation
 
-If you use DIVERGE in research, please cite:
+If you use RESIDUALS in research, please cite:
 ```
-@software{diverge2024,
-  title={DIVERGE: Differential Verification of Ground-truth Extraction},
-  author={Your Name},
+@software{residuals2024,
+  title={RESIDUALS: Multi-Method Differential Feature Detection},
+  author={bshepp},
   year={2024},
-  url={https://github.com/bshepp/DIVERGE}
+  url={https://github.com/bshepp/RESIDUALS}
 }
 ```
 
 ## License
 
-Apache License 2.0 - Includes explicit patent grant for defensive protection.
+Apache License 2.0
 
 ## Acknowledgments
 
-- LiDAR data: Connecticut Environmental Conditions Online (CT ECO)
+- Sample LiDAR data: Connecticut Environmental Conditions Online (CT ECO)
 - Built with: NumPy, SciPy, scikit-image, PyWavelets, OpenCV, Matplotlib

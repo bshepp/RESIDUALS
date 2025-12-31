@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-DIVERGE: Main Experiment Runner
+RESIDUALS: Main Experiment Runner
 
 Runs the decomposition × upsampling experimental framework.
-Computes differentials and ranks results for archaeological feature detection.
+Computes differentials and ranks results for feature detection.
 """
 
 import numpy as np
@@ -50,7 +50,7 @@ def run_experiment(
     from src.analysis import (
         compute_all_differentials,
         analyze_features,
-        rank_for_archaeology,
+        rank_for_features,
         generate_analysis_report
     )
     from src.utils import (
@@ -188,10 +188,10 @@ def run_experiment(
             logger.warning(f"Analysis failed for {key}: {e}")
             continue
     
-    # Rank for archaeological features
-    ranked = rank_for_archaeology(differentials, analyses)
+    # Rank for feature detection
+    ranked = rank_for_features(differentials, analyses)
     
-    logger.info("\nTop 10 candidates for archaeological feature detection:")
+    logger.info("\nTop 10 candidates for feature detection:")
     for i, (key, score, analysis) in enumerate(ranked[:10]):
         logger.info(f"  {i+1}. {key}")
         logger.info(f"     Score: {score:.1f}, Linear: {analysis.get('linear_feature_count', 0)}, "
@@ -249,7 +249,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="DIVERGE: Decomposition × Upsampling Experimental Framework",
+        description="RESIDUALS: Decomposition × Upsampling Experimental Framework",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

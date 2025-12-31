@@ -1,6 +1,6 @@
 # Differential Analysis Report
 
-## Top Candidates for Archaeological Feature Detection
+## Top Candidates for Feature Detection
 
 | Rank | Combination | Score | Linear Features | Spatial Autocorr | Feature SNR |
 |------|-------------|-------|-----------------|------------------|-------------|

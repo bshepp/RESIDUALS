@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DIVERGE Exhaustive Parameter Exploration
+RESIDUALS Exhaustive Parameter Exploration
 
 Runs ALL parameter combinations to generate comprehensive prior art.
 Outputs detailed documentation of each combination's behavior.
@@ -379,13 +379,13 @@ def generate_prior_art_document(doc: dict, output_path: Path):
     """
     
     lines = [
-        "# DIVERGE: Exhaustive Parameter Exploration - Prior Art Documentation",
+        "# RESIDUALS: Exhaustive Parameter Exploration - Prior Art Documentation",
         "",
         f"**Generated**: {doc['run_timestamp']}",
         "",
         "**Purpose**: This document establishes prior art for all tested combinations ",
         "of signal decomposition and upsampling methods applied to Digital Elevation ",
-        "Model (DEM) super-resolution for archaeological feature detection.",
+        "Model (DEM) super-resolution for feature detection.",
         "",
         "---",
         "",
@@ -494,7 +494,7 @@ def generate_prior_art_document(doc: dict, output_path: Path):
     lines.append("The methods, parameter combinations, and results documented herein ")
     lines.append("constitute prior art and are disclosed publicly to prevent exclusive ")
     lines.append("claims or patents on these specific applications of signal processing ")
-    lines.append("to Digital Elevation Model analysis for archaeological feature detection.")
+    lines.append("to Digital Elevation Model analysis for feature detection.")
     lines.append("")
     
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -505,7 +505,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="DIVERGE Exhaustive Parameter Exploration",
+        description="RESIDUALS Exhaustive Parameter Exploration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 This script tests ALL parameter combinations to create comprehensive prior art.

@@ -1,4 +1,4 @@
-# DIVERGE: Decomposition x Upsampling Experimental Framework
+# RESIDUALS: Decomposition x Upsampling Experimental Framework
 # Core dependencies
 
 numpy>=1.21.0

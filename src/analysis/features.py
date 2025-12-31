@@ -239,12 +239,12 @@ def compute_feature_snr(diff: np.ndarray, percentile: float = 95) -> float:
     return float(snr)
 
 
-def rank_for_archaeology(
+def rank_for_features(
     differentials: Dict[str, np.ndarray],
     analyses: Dict[str, Dict[str, Any]]
 ) -> List[Tuple[str, float, Dict[str, Any]]]:
     """
-    Rank differentials by potential for archaeological feature detection.
+    Rank differentials by potential for feature detection.
     
     Scoring emphasizes:
     - Linear features (roads, walls)
@@ -311,7 +311,7 @@ def generate_analysis_report(
     lines = [
         "# Differential Analysis Report",
         "",
-        "## Top Candidates for Archaeological Feature Detection",
+        "## Top Candidates for Feature Detection",
         "",
         "| Rank | Combination | Score | Linear Features | Spatial Autocorr | Feature SNR |",
         "|------|-------------|-------|-----------------|------------------|-------------|"
