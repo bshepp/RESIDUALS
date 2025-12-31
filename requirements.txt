@@ -1,0 +1,18 @@
+# DIVERGE: Decomposition x Upsampling Experimental Framework
+# Core dependencies
+
+numpy>=1.21.0
+scipy>=1.7.0
+scikit-image>=0.19.0
+opencv-python-headless>=4.5.0
+PyWavelets>=1.1.0
+scikit-learn>=1.0.0
+laspy>=2.0.0
+tqdm>=4.62.0
+matplotlib>=3.5.0
+
+# Optional for extended methods
+# PyEMD>=0.2.0
+# vmdpy>=0.2
+# torch>=1.10.0
+

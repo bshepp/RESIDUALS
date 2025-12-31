@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large data files (keep samples, ignore large DEMs)
+data/test_dems/*large*.npy
+data/test_dems/*4x4*.npy
+
+# Large result files (keep key outputs)
+results/differentials/*.npy
+results/combinations/*.npy
+results/visualizations/residuals_grid_*.png
+results/visualizations/residuals_grid.png
+!results/visualizations/residuals_grid_preview.png
+
+# Debug images (keep archive)
+results/visualizations/*_test.png
+results/visualizations/*_check.png
+results/visualizations/*_comparison.png
+results/visualizations/*_fix*.png
+
+# Logs
+*.log
+experiment.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+
