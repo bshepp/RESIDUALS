@@ -10,4 +10,5 @@ from .registry import (
 
 # Import methods to trigger registration
 from . import methods
+from . import methods_extended  # Extended methods for exhaustive prior art
 

@@ -43,6 +43,7 @@ data/test_dems/*4x4*.npy
 # Large result files (keep key outputs)
 results/differentials/*.npy
 results/combinations/*.npy
+results/exhaustive/
 results/visualizations/residuals_grid_*.png
 results/visualizations/residuals_grid.png
 !results/visualizations/residuals_grid_preview.png
@@ -52,10 +53,14 @@ results/visualizations/*_test.png
 results/visualizations/*_check.png
 results/visualizations/*_comparison.png
 results/visualizations/*_fix*.png
+results/visualizations/*_grid.png
+results/visualizations/*_grid_fixed.png
+!results/visualizations/residuals_grid_preview.png
 
 # Logs
 *.log
 experiment.log
+exhaustive_experiment.log
 
 # OS
 .DS_Store
