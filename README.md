@@ -24,7 +24,7 @@ DIVERGE systematically tests combinations of signal decomposition and upsampling
 
 ```bash
 # Clone and install
-git clone https://github.com/YOUR_USERNAME/DIVERGE.git
+git clone https://github.com/bshepp/DIVERGE.git
 cd DIVERGE
 pip install -r requirements.txt
 
@@ -119,13 +119,13 @@ If you use DIVERGE in research, please cite:
   title={DIVERGE: Differential Verification of Ground-truth Extraction},
   author={Your Name},
   year={2024},
-  url={https://github.com/YOUR_USERNAME/DIVERGE}
+  url={https://github.com/bshepp/DIVERGE}
 }
 ```
 
 ## License
 
-MIT License - Use freely, attribution appreciated.
+Apache License 2.0 - Includes explicit patent grant for defensive protection.
 
 ## Acknowledgments
 
