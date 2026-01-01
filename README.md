@@ -146,4 +146,4 @@ Apache License 2.0
 ## Acknowledgments
 
 - Sample LiDAR data: Connecticut Environmental Conditions Online (CT ECO)
-- Built with: NumPy, SciPy, scikit-image, PyWavelets, OpenCV, Matplotlib
+- Built in CUrsor with: Opus 4.5, NumPy, SciPy, scikit-image, PyWavelets, OpenCV, Matplotlib
