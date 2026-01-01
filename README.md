@@ -131,10 +131,10 @@ Contributions welcome. Areas of interest:
 
 If you use RESIDUALS in research, please cite:
 ```
-@software{residuals2024,
+@software{residuals2025,
   title={RESIDUALS: Multi-Method Differential Feature Detection},
   author={bshepp},
-  year={2024},
+  year={2025},
   url={https://github.com/bshepp/RESIDUALS}
 }
 ```
