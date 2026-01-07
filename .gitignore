@@ -36,9 +36,10 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Large data files (keep samples, ignore large DEMs)
-data/test_dems/*large*.npy
-data/test_dems/*4x4*.npy
+# Large data files (keep small samples, ignore large DEMs)
+data/test_dems/*.npy
+data/test_dems/*.tif
+!data/test_dems/fairfield_sample_*.npy
 
 # Large result files (keep key outputs)
 results/differentials/*.npy
@@ -48,13 +49,14 @@ results/visualizations/residuals_grid_*.png
 results/visualizations/residuals_grid.png
 !results/visualizations/residuals_grid_preview.png
 
-# Debug images (keep archive)
+# Debug/preview images
 results/visualizations/*_test.png
 results/visualizations/*_check.png
 results/visualizations/*_comparison.png
 results/visualizations/*_fix*.png
 results/visualizations/*_grid.png
 results/visualizations/*_grid_fixed.png
+results/visualizations/*_preview.png
 !results/visualizations/residuals_grid_preview.png
 
 # Logs
