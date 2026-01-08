@@ -520,8 +520,59 @@ def decompose_rolling_ball(dem: np.ndarray, radius: int = 50) -> tuple:
     
     Simulates a ball rolling under the surface. Common in microscopy.
     Effective for removing large-scale curvature while preserving local features.
+    
+    For large radii (>150), uses a downsampling approach to reduce memory usage
+    while maintaining equivalent results for trend extraction.
     """
+    from scipy.ndimage import grey_erosion, grey_dilation, zoom
+    
     dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    original_shape = dem_filled.shape
+    
+    # For large radii, use downsampling to reduce memory
+    # Threshold chosen based on memory constraints
+    large_radius_threshold = 150
+    
+    if radius > large_radius_threshold:
+        # Downsample factor: aim for effective radius of ~75
+        downsample_factor = radius / 75
+        
+        # Downsample the DEM
+        dem_small = zoom(dem_filled, 1.0 / downsample_factor, order=1)
+        effective_radius = int(radius / downsample_factor)
+        
+        # Run rolling ball on smaller DEM
+        trend_small = _rolling_ball_core(dem_small, effective_radius)
+        
+        # Upsample the trend back to original size
+        trend = zoom(trend_small, downsample_factor, order=3)
+        
+        # Handle size mismatch from zoom rounding
+        if trend.shape != original_shape:
+            # Crop or pad to match
+            trend = _match_shape(trend, original_shape)
+    else:
+        trend = _rolling_ball_core(dem_filled, radius)
+    
+    residual = dem_filled - trend
+    
+    return trend, residual
+
+
+def _rolling_ball_core(dem: np.ndarray, radius: int) -> np.ndarray:
+    """Core rolling ball algorithm for a given radius."""
+    from scipy.ndimage import grey_erosion, grey_dilation
+    
+    # Check if padding is needed (kernel size > smallest dimension)
+    kernel_size = 2 * radius + 1
+    min_dim = min(dem.shape)
+    needs_padding = kernel_size > min_dim
+    
+    if needs_padding:
+        pad_size = radius + 1
+        dem_work = np.pad(dem, pad_size, mode='reflect')
+    else:
+        dem_work = dem
     
     # Create ball kernel
     size = 2 * radius + 1
@@ -538,15 +589,28 @@ def decompose_rolling_ball(dem: np.ndarray, radius: int = 50) -> tuple:
     ball = ball.max() - ball  # Invert for use as structuring element
     
     # Use grayscale erosion then dilation (opening)
-    # This is equivalent to rolling ball from below
-    from scipy.ndimage import grey_erosion, grey_dilation
+    eroded = grey_erosion(dem_work, footprint=ball > 0, structure=ball)
+    trend_work = grey_dilation(eroded, footprint=ball > 0, structure=ball)
     
-    eroded = grey_erosion(dem_filled, footprint=ball > 0, structure=ball)
-    trend = grey_dilation(eroded, footprint=ball > 0, structure=ball)
+    if needs_padding:
+        trend = trend_work[pad_size:-pad_size, pad_size:-pad_size]
+    else:
+        trend = trend_work
     
-    residual = dem_filled - trend
+    return trend
+
+
+def _match_shape(arr: np.ndarray, target_shape: tuple) -> np.ndarray:
+    """Crop or pad array to match target shape."""
+    result = np.zeros(target_shape, dtype=arr.dtype)
     
-    return trend, residual
+    # Calculate overlap
+    min_rows = min(arr.shape[0], target_shape[0])
+    min_cols = min(arr.shape[1], target_shape[1])
+    
+    result[:min_rows, :min_cols] = arr[:min_rows, :min_cols]
+    
+    return result
 
 
 # =============================================================================
