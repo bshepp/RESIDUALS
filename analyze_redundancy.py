@@ -13,6 +13,7 @@ import numpy as np
 from pathlib import Path
 import argparse
 import json
+import gc
 from collections import defaultdict
 from datetime import datetime
 from tqdm import tqdm
@@ -57,46 +58,85 @@ def parse_filename(filename: str) -> dict:
     return {'decomposition': name, 'upsampling': 'unknown', 'full': name}
 
 
-def compute_fingerprint(arr: np.ndarray) -> np.ndarray:
+def compute_fingerprint(arr: np.ndarray, max_sample_size: int = 1_000_000) -> np.ndarray:
     """Compute lightweight statistical fingerprint of array.
     
     Returns ~20-dimensional feature vector.
+    
+    For large arrays, uses sampling to reduce memory usage.
     """
-    flat = arr.flatten()
+    # For very large arrays, use sampling to compute stats
+    total_elements = arr.size
+    use_sampling = total_elements > max_sample_size
+    
+    if use_sampling:
+        # Random sampling for statistics (memory efficient)
+        rng = np.random.default_rng(42)  # Reproducible
+        flat_indices = rng.choice(total_elements, size=max_sample_size, replace=False)
+        flat_sample = arr.flat[sorted(flat_indices)]
+    else:
+        flat_sample = arr.flatten()
     
     # Basic statistics
     stats = [
-        np.mean(flat),
-        np.std(flat),
-        np.min(flat),
-        np.max(flat),
-        np.median(flat),
-        np.percentile(flat, 25),
-        np.percentile(flat, 75),
+        float(np.mean(flat_sample)),
+        float(np.std(flat_sample)),
+        float(np.min(flat_sample)),
+        float(np.max(flat_sample)),
+        float(np.median(flat_sample)),
+        float(np.percentile(flat_sample, 25)),
+        float(np.percentile(flat_sample, 75)),
     ]
     
     # Histogram (10 bins, normalized)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        hist, _ = np.histogram(flat, bins=10, density=True)
+        hist, _ = np.histogram(flat_sample, bins=10, density=True)
         # Handle edge case of constant array
         if np.any(np.isnan(hist)):
             hist = np.zeros(10)
     
-    # Gradient magnitude (edge density)
+    # Clean up sample
+    del flat_sample
+    
+    # Gradient magnitude (edge density) - use subsampling for large arrays
     if arr.ndim == 2 and arr.shape[0] > 1 and arr.shape[1] > 1:
-        gy, gx = np.gradient(arr)
-        grad_mag = np.sqrt(gx**2 + gy**2)
-        grad_stats = [np.mean(grad_mag), np.std(grad_mag), np.max(grad_mag)]
+        if use_sampling:
+            # Subsample the array for gradient computation
+            step = max(1, int(np.sqrt(total_elements / max_sample_size)))
+            arr_sub = arr[::step, ::step]
+        else:
+            arr_sub = arr
+        
+        try:
+            gy, gx = np.gradient(arr_sub.astype(np.float32))
+            grad_mag = np.sqrt(gx**2 + gy**2)
+            grad_stats = [float(np.mean(grad_mag)), float(np.std(grad_mag)), float(np.max(grad_mag))]
+            del gy, gx, grad_mag
+        except MemoryError:
+            # Fall back to simpler edge estimate
+            grad_stats = [float(np.std(arr_sub)), 0.0, 0.0]
+        
+        if use_sampling:
+            del arr_sub
     else:
-        grad_stats = [0, 0, 0]
+        grad_stats = [0.0, 0.0, 0.0]
     
     return np.array(stats + list(hist) + grad_stats)
 
 
 def compute_all_fingerprints(results_dir: Path, file_list: list = None, 
-                              limit: int = None) -> dict:
+                              limit: int = None, 
+                              checkpoint_file: Path = None,
+                              gc_interval: int = 100) -> dict:
     """Compute fingerprints for all result files.
+    
+    Args:
+        results_dir: Directory containing result .npy files
+        file_list: Optional list of specific files to process
+        limit: Optional limit on number of files
+        checkpoint_file: Optional path to save/load intermediate results
+        gc_interval: Run garbage collection every N files
     
     Returns: {filename: fingerprint_array}
     """
@@ -108,16 +148,63 @@ def compute_all_fingerprints(results_dir: Path, file_list: list = None,
     if limit:
         file_list = file_list[:limit]
     
+    # Load existing checkpoint if available
     fingerprints = {}
-    for fpath in tqdm(file_list, desc="Computing fingerprints"):
+    if checkpoint_file and checkpoint_file.exists():
+        try:
+            with open(checkpoint_file, 'r') as f:
+                checkpoint_data = json.load(f)
+            # Convert lists back to arrays
+            fingerprints = {k: np.array(v) for k, v in checkpoint_data.items()}
+            print(f"Loaded {len(fingerprints)} fingerprints from checkpoint")
+        except Exception as e:
+            print(f"Could not load checkpoint: {e}")
+    
+    # Filter out already processed files
+    remaining = [f for f in file_list if f.name not in fingerprints]
+    print(f"Processing {len(remaining)} files ({len(fingerprints)} already done)")
+    
+    processed_since_checkpoint = 0
+    checkpoint_interval = 1000
+    
+    for i, fpath in enumerate(tqdm(remaining, desc="Computing fingerprints")):
         try:
             # Use memmap for memory efficiency - READ ONLY
             arr = np.load(fpath, mmap_mode='r')
             fingerprints[fpath.name] = compute_fingerprint(arr)
+            
+            # Explicitly delete and collect garbage periodically
+            del arr
+            processed_since_checkpoint += 1
+            
+            if (i + 1) % gc_interval == 0:
+                gc.collect()
+            
+            # Save checkpoint periodically
+            if checkpoint_file and processed_since_checkpoint >= checkpoint_interval:
+                save_fingerprint_checkpoint(fingerprints, checkpoint_file)
+                processed_since_checkpoint = 0
+                
         except Exception as e:
             print(f"Warning: Could not process {fpath.name}: {e}")
     
+    # Final checkpoint save
+    if checkpoint_file and processed_since_checkpoint > 0:
+        save_fingerprint_checkpoint(fingerprints, checkpoint_file)
+    
+    # Force final garbage collection
+    gc.collect()
+    
     return fingerprints
+
+
+def save_fingerprint_checkpoint(fingerprints: dict, checkpoint_file: Path):
+    """Save fingerprints to checkpoint file."""
+    # Convert numpy arrays to lists for JSON serialization
+    serializable = {k: v.tolist() for k, v in fingerprints.items()}
+    with open(checkpoint_file, 'w') as f:
+        json.dump(serializable, f)
+    print(f"Checkpoint saved: {len(fingerprints)} fingerprints")
 
 
 def fingerprint_similarity(fp1: np.ndarray, fp2: np.ndarray) -> float:
@@ -448,6 +535,10 @@ def main():
                         help='Skip clustering analysis')
     parser.add_argument('--near-dupe-threshold', type=float, default=0.999,
                         help='Fingerprint similarity threshold for near-duplicates')
+    parser.add_argument('--checkpoint', type=str, default=None,
+                        help='Checkpoint file for resumable fingerprinting')
+    parser.add_argument('--gc-interval', type=int, default=100,
+                        help='Run garbage collection every N files')
     
     args = parser.parse_args()
     
@@ -478,10 +569,13 @@ def main():
     # Stage 2: Statistical fingerprints
     print("\nStage 2: Computing statistical fingerprints...")
     file_list = list(checksums.keys()) if checksums else None
+    checkpoint_path = Path(args.checkpoint) if args.checkpoint else None
     fingerprints = compute_all_fingerprints(
         results_dir, 
         file_list=file_list,
-        limit=args.fingerprint_limit
+        limit=args.fingerprint_limit,
+        checkpoint_file=checkpoint_path,
+        gc_interval=args.gc_interval
     )
     print(f"  Computed {len(fingerprints)} fingerprints")
     
