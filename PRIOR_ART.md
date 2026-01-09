@@ -1,6 +1,8 @@
 # RESIDUALS: Exhaustive Parameter Exploration - Prior Art Documentation
 
-**Generated**: 20260105_134622
+**Generated**: 2026-01-05  
+**Analysis Completed**: 2026-01-09  
+**Total Data Size**: 4.28 TB (39,731 output files)
 
 **Purpose**: This document establishes prior art for all tested combinations 
 of signal decomposition and upsampling methods applied to Digital Elevation 
@@ -439,14 +441,80 @@ Model (DEM) super-resolution for feature detection.
 
 ## 2. Tested Combinations Summary
 
-**Total Combinations Tested**: 2366
+**Total Combinations Tested**: 39,731
+
+**Total Data Generated**: 4.28 TB
+
+### Redundancy Analysis
+
+Analysis of all 39,731 outputs using SHA-256 checksums and statistical fingerprinting:
+
+| Metric | Value |
+|--------|-------|
+| Exact duplicate groups | 3,345 |
+| Near-duplicate pairs (r > 0.99) | 4,754,489 |
+| Distinct method clusters | 20 |
+| Verification accuracy | 100/100 sampled pairs confirmed |
+
+**Key equivalences discovered:**
+- `bspline` ≡ `quadratic` upsampling (identical outputs for all decompositions)
+- Anisotropic Diffusion variations cluster together (42% of all methods)
+- Morphological methods cluster by structuring element shape
+
+### Top 20 Method Clusters (by output similarity)
+
+| Cluster | Representative Method | Count | % |
+|---------|----------------------|-------|---|
+| 4 | Anisotropic Diffusion | 16,760 | 42.2% |
+| 2 | Gaussian Anisotropic | 7,197 | 18.1% |
+| 0 | Morphological (square) | 4,375 | 11.0% |
+| 9 | Wavelet DWT | 2,696 | 6.8% |
+| 19 | Morphological Ellipse | 2,454 | 6.2% |
+| 1 | Wavelet DWT | 1,548 | 3.9% |
+| 6 | Morphological Gradient | 1,159 | 2.9% |
+| 15 | Morphological Rectangle | 1,039 | 2.6% |
+| 3 | Gaussian (large σ) | 736 | 1.9% |
+| 7 | DoG Multiscale | 695 | 1.7% |
+| 10 | Morphological Rectangle | 312 | 0.8% |
+| 18 | DoG Multiscale | 303 | 0.8% |
+| 13 | Wavelet Biorthogonal | 181 | 0.5% |
+| 5 | Rolling Ball | 128 | 0.3% |
+| 14 | Polynomial | 61 | 0.2% |
+| 11 | Difference of Gaussians | 59 | 0.1% |
+| 16 | Laplacian of Gaussian | 18 | 0.05% |
+| 8 | Rolling Ball | 6 | 0.02% |
+| 12 | Polynomial | 2 | 0.01% |
+| 17 | Rolling Ball | 2 | 0.01% |
 
 ### Combinations by Decomposition Method
 
 | Decomposition | Combinations Tested |
 |---------------|---------------------|
-| wavelet_biorthogonal | 697 |
-| wavelet_reverse_biorthogonal | 1669 |
+| gaussian | 402 |
+| bilateral | 6,700 |
+| wavelet_dwt | 2,010 |
+| morphological | 1,005 |
+| tophat | 536 |
+| polynomial | 201 |
+| gaussian_anisotropic | 1,675 |
+| median | 402 |
+| uniform | 402 |
+| dog | 1,340 |
+| dog_multiscale | 2,412 |
+| log | 402 |
+| morphological_square | 1,608 |
+| morphological_rect | 3,216 |
+| morphological_diamond | 1,005 |
+| morphological_ellipse | 5,025 |
+| morphological_gradient | 1,005 |
+| tophat_combined | 335 |
+| anisotropic_diffusion | 4,288 |
+| rolling_ball | 335 |
+| local_polynomial | 804 |
+| guided | 1,072 |
+| polynomial_high | 201 |
+| wavelet_biorthogonal | 1,675 |
+| wavelet_reverse_biorthogonal | 1,675 |
 
 ---
 
@@ -517,10 +585,21 @@ terrain features at specific scales and with specific characteristics.
 All results can be reproduced by running:
 
 ```bash
+# Generate all 39,731 combinations
 python run_exhaustive.py --dem <path_to_dem>
+
+# Generate SHA-256 checksums
+python generate_checksums.py --source <results_dir>
+
+# Run redundancy analysis
+python analyze_redundancy.py --results <results_dir> --checksums results/CHECKSUMS.txt
 ```
 
-Result hashes (SHA-256) are provided for verification.
+### Verification
+
+- **SHA-256 checksums**: All 39,731 output files are hashed and recorded in `results/CHECKSUMS.txt`
+- **Statistical fingerprints**: Compact 26-dimensional signatures for near-duplicate detection
+- **Correlation verification**: 100/100 sampled near-duplicate pairs verified with r > 0.99
 
 ---
 

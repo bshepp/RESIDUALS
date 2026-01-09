@@ -68,9 +68,31 @@ python run_exhaustive.py --output results/exhaustive
 
 # Limited test run
 python run_exhaustive.py --max-decomp 2 --max-upsamp 2
+
+# Analyze redundancy across outputs
+python analyze_redundancy.py --results D:\path\to\results --checksums results\CHECKSUMS.txt
 ```
 
 Generates comprehensive documentation of all method combinations with statistics and hashes.
+
+### Redundancy Analysis Results
+
+Analysis of all 39,731 combinations revealed significant redundancy:
+
+| Metric | Value |
+|--------|-------|
+| Total combinations | 39,731 |
+| Exact duplicates | 3,345 groups |
+| Near-duplicate pairs | 4,754,489 (0.6% of all pairs) |
+| Distinct method clusters | 20 |
+
+**Key findings:**
+- `bspline` and `quadratic` upsampling produce **identical outputs** for all decomposition methods
+- **Anisotropic Diffusion** dominates — 42% of combinations cluster together regardless of upsampling
+- Decomposition method matters more than upsampling method for output characteristics
+- 99.4% of method combinations produce genuinely distinct outputs
+
+See `results/REDUNDANCY_REPORT.md` for full analysis.
 
 ## Output Visualization
 
