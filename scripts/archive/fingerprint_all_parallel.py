@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Parallel Fingerprint Generator for DIVERGE Exhaustive Results
+Parallel Fingerprint Generator for RESIDUALS Exhaustive Results
 
 Uses ProcessPoolExecutor with 2 workers (HDD-optimized) to fingerprint
 all output files for redundancy analysis.
@@ -19,8 +19,8 @@ import argparse
 
 
 # Configuration
-RESULTS_DIR = Path('D:/DIVERGE_exhaustive/results')
-CHECKPOINT_FILE = Path('F:/science-projects/DIVERGE/results/fingerprint_checkpoint.json')
+RESULTS_DIR = Path('D:/RESIDUALS_exhaustive/results')
+CHECKPOINT_FILE = Path('F:/science-projects/RESIDUALS/results/fingerprint_checkpoint.json')
 NUM_WORKERS = 2  # Optimized for HDD
 CHECKPOINT_INTERVAL = 500  # Save every N files
 
@@ -130,7 +130,7 @@ def main():
     checkpoint_path = Path(args.checkpoint)
     
     print(f"{'='*60}")
-    print(f"DIVERGE Parallel Fingerprint Generator")
+    print(f"RESIDUALS Parallel Fingerprint Generator")
     print(f"{'='*60}")
     print(f"Source: {results_dir}")
     print(f"Workers: {args.workers}")

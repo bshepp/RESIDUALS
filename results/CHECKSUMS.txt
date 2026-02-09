@@ -1,7 +1,7 @@
-# DIVERGE Exhaustive Run - SHA256 Checksums
+# RESIDUALS Exhaustive Run - SHA256 Checksums
 # Updated: 2026-01-08T15:38:09.807150
 # Total files: 39731
-# Source: D:\DIVERGE_exhaustive\results
+# Source: D:\RESIDUALS_exhaustive\results
 #
 # Format: SHA256_HASH  FILENAME
 # Verify with: sha256sum -c CHECKSUMS.txt

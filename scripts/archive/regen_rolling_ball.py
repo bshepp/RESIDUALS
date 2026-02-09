@@ -22,7 +22,7 @@ def main():
     print(f"Loaded DEM: {dem.shape}")
     
     # Output directory
-    output_dir = Path('D:/DIVERGE_exhaustive/results')
+    output_dir = Path('D:/RESIDUALS_exhaustive/results')
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Run decomposition with radius=200

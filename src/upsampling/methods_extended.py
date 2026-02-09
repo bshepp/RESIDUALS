@@ -11,6 +11,7 @@ from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
 import cv2
 
 from .registry import register_upsampling
+from ..utils.preprocessing import fill_nans
 
 
 # =============================================================================
@@ -32,7 +33,7 @@ def upsample_nearest(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     Simplest method. No interpolation, just replicates pixels.
     Useful as baseline to measure interpolation effects.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=0)
 
 
@@ -51,7 +52,7 @@ def upsample_bilinear(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     Linear interpolation in both directions. Smooth but blurs edges.
     No ringing or overshoot artifacts.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=1)
 
 
@@ -69,7 +70,7 @@ def upsample_quadratic(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     
     Between linear and cubic. Less smooth than cubic but less ringing.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=2)
 
 
@@ -87,7 +88,7 @@ def upsample_quartic(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     
     Higher order than cubic. More smooth continuity but more ringing.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=4)
 
 
@@ -106,7 +107,7 @@ def upsample_quintic(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     Highest order available in scipy.ndimage.zoom.
     Maximum smoothness but maximum ringing artifacts.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=5)
 
 
@@ -124,7 +125,7 @@ def upsample_quintic(dem: np.ndarray, scale: int = 2) -> np.ndarray:
 )
 def upsample_bicubic_3x(dem: np.ndarray, scale: int = 3) -> np.ndarray:
     """Bicubic interpolation at 3x scale."""
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=3)
 
 
@@ -138,7 +139,7 @@ def upsample_bicubic_3x(dem: np.ndarray, scale: int = 3) -> np.ndarray:
 )
 def upsample_bicubic_16x(dem: np.ndarray, scale: int = 16) -> np.ndarray:
     """Bicubic interpolation at 16x scale for extreme upsampling."""
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     return zoom(dem_filled, scale, order=3)
 
 
@@ -162,7 +163,7 @@ def upsample_area(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     For upscaling, behaves like nearest-neighbor with some smoothing.
     Included for completeness in method comparison.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -189,7 +190,7 @@ def upsample_linear_exact(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     INTER_LINEAR_EXACT provides bit-exact results regardless of
     threading or hardware. Useful for reproducibility.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -227,7 +228,7 @@ def upsample_sinc_hamming(
     Windowed sinc reduces Gibbs ringing compared to pure sinc (FFT).
     Hamming window provides good sidelobe suppression.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -281,7 +282,7 @@ def upsample_sinc_blackman(
     Blackman window has better sidelobe suppression than Hamming,
     resulting in less ringing but slightly more blurring.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -328,7 +329,7 @@ def upsample_cubic_catmull_rom(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     Passes through all control points with C1 continuity.
     Less blurring than B-spline, less ringing than Keys cubic.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -378,7 +379,7 @@ def upsample_cubic_mitchell(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     Designed to balance blurring, ringing, and anisotropy.
     Often considered ideal for general-purpose image interpolation.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -437,7 +438,7 @@ def upsample_edge_directed(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     
     Note: Simplified implementation for prior art purposes.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # First do bicubic as baseline
     bicubic = zoom(dem_filled, scale, order=3)
@@ -501,7 +502,7 @@ def upsample_regularized(
     
     lambda_reg: regularization strength (higher = smoother)
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Start with bicubic
     result = zoom(dem_filled, scale, order=3)

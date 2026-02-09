@@ -17,6 +17,48 @@ from skimage.filters import difference_of_gaussians
 import cv2
 
 from .registry import register_decomposition
+from ..utils.preprocessing import fill_nans
+
+
+# =============================================================================
+# Shared Morphological Helper
+# =============================================================================
+
+def _morphological_decompose(
+    dem_filled: np.ndarray,
+    selem: np.ndarray,
+    operation: str
+) -> tuple:
+    """Shared logic for morphological decomposition methods.
+
+    Applies the specified morphological operation using the given
+    structuring element and returns (trend, residual).
+
+    Args:
+        dem_filled: NaN-free DEM array.
+        selem: Structuring element (footprint).
+        operation: One of 'opening', 'closing', 'gradient', 'average'.
+
+    Returns:
+        Tuple of (trend, residual) arrays.
+    """
+    if operation == 'opening':
+        trend = grey_opening(dem_filled, footprint=selem)
+    elif operation == 'closing':
+        trend = grey_closing(dem_filled, footprint=selem)
+    elif operation == 'gradient':
+        dilated = grey_dilation(dem_filled, footprint=selem)
+        eroded = grey_erosion(dem_filled, footprint=selem)
+        residual = dilated - eroded
+        trend = dem_filled - residual
+        return trend, residual
+    else:  # 'average' - opening-closing average
+        opened = grey_opening(dem_filled, footprint=selem)
+        closed = grey_closing(dem_filled, footprint=selem)
+        trend = (opened + closed) / 2
+
+    residual = dem_filled - trend
+    return trend, residual
 
 
 # =============================================================================
@@ -48,7 +90,7 @@ def decompose_gaussian_anisotropic(
     sigma_x: smoothing perpendicular to rows (horizontal features)
     sigma_y: smoothing perpendicular to columns (vertical features)
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     trend = gaussian_filter(dem_filled, sigma=(sigma_y, sigma_x))
     residual = dem_filled - trend
     return trend, residual
@@ -69,7 +111,7 @@ def decompose_median(dem: np.ndarray, size: int = 5) -> tuple:
     Non-linear, edge-preserving smoothing. Better than bilateral
     for removing impulse noise while preserving edges.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     trend = median_filter(dem_filled, size=size)
     residual = dem_filled - trend
     return trend, residual
@@ -90,7 +132,7 @@ def decompose_uniform(dem: np.ndarray, size: int = 10) -> tuple:
     Simple averaging filter. Faster than Gaussian but introduces
     more artifacts at edges. Useful as baseline.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     trend = uniform_filter(dem_filled, size=size)
     residual = dem_filled - trend
     return trend, residual
@@ -124,7 +166,7 @@ def decompose_dog(
     
     Residual = G(σ_low) - G(σ_high)
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Ensure sigma_high > sigma_low
     if sigma_high <= sigma_low:
@@ -159,7 +201,7 @@ def decompose_dog_multiscale(
     Creates a scale-space pyramid and sums DoG responses.
     Detects features across multiple scales simultaneously.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     combined_residual = np.zeros_like(dem_filled)
     
@@ -195,7 +237,7 @@ def decompose_log(dem: np.ndarray, sigma: float = 5) -> tuple:
     Detects blob-like features (mounds, pits) at a specific scale.
     The residual is the LoG response (normalized).
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Smooth then apply Laplacian (approximates LoG)
     smoothed = gaussian_filter(dem_filled, sigma=sigma)
@@ -234,27 +276,9 @@ def decompose_morphological_square(
     Square element is faster to compute and better for detecting
     rectilinear features (building foundations, field boundaries).
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     selem = square(size)
-    
-    if operation == 'opening':
-        trend = grey_opening(dem_filled, footprint=selem)
-    elif operation == 'closing':
-        trend = grey_closing(dem_filled, footprint=selem)
-    elif operation == 'gradient':
-        # Morphological gradient = dilation - erosion
-        dilated = grey_dilation(dem_filled, footprint=selem)
-        eroded = grey_erosion(dem_filled, footprint=selem)
-        residual = dilated - eroded
-        trend = dem_filled - residual
-        return trend, residual
-    else:  # average
-        opened = grey_opening(dem_filled, footprint=selem)
-        closed = grey_closing(dem_filled, footprint=selem)
-        trend = (opened + closed) / 2
-    
-    residual = dem_filled - trend
-    return trend, residual
+    return _morphological_decompose(dem_filled, selem, operation)
 
 
 @register_decomposition(
@@ -282,20 +306,9 @@ def decompose_morphological_rect(
     Width > height detects vertical linear features.
     Height > width detects horizontal linear features.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     selem = rectangle(height, width)
-    
-    if operation == 'opening':
-        trend = grey_opening(dem_filled, footprint=selem)
-    elif operation == 'closing':
-        trend = grey_closing(dem_filled, footprint=selem)
-    else:  # average
-        opened = grey_opening(dem_filled, footprint=selem)
-        closed = grey_closing(dem_filled, footprint=selem)
-        trend = (opened + closed) / 2
-    
-    residual = dem_filled - trend
-    return trend, residual
+    return _morphological_decompose(dem_filled, selem, operation)
 
 
 @register_decomposition(
@@ -320,20 +333,9 @@ def decompose_morphological_diamond(
     Diamond element is useful for features at 45-degree angles
     and has smaller computational footprint than disk.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     selem = diamond(radius)
-    
-    if operation == 'opening':
-        trend = grey_opening(dem_filled, footprint=selem)
-    elif operation == 'closing':
-        trend = grey_closing(dem_filled, footprint=selem)
-    else:  # average
-        opened = grey_opening(dem_filled, footprint=selem)
-        closed = grey_closing(dem_filled, footprint=selem)
-        trend = (opened + closed) / 2
-    
-    residual = dem_filled - trend
-    return trend, residual
+    return _morphological_decompose(dem_filled, selem, operation)
 
 
 @register_decomposition(
@@ -360,20 +362,9 @@ def decompose_morphological_ellipse(
     Combines aspects of disk (isotropy) and rectangle (directionality).
     Width/height ratio determines orientation selectivity.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     selem = ellipse(height // 2, width // 2)
-    
-    if operation == 'opening':
-        trend = grey_opening(dem_filled, footprint=selem)
-    elif operation == 'closing':
-        trend = grey_closing(dem_filled, footprint=selem)
-    else:  # average
-        opened = grey_opening(dem_filled, footprint=selem)
-        closed = grey_closing(dem_filled, footprint=selem)
-        trend = (opened + closed) / 2
-    
-    residual = dem_filled - trend
-    return trend, residual
+    return _morphological_decompose(dem_filled, selem, operation)
 
 
 @register_decomposition(
@@ -398,7 +389,7 @@ def decompose_morphological_gradient(
     Highlights boundaries and edges. Residual is the edge map.
     Similar to gradient magnitude but using morphological operations.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     if shape == 'disk':
         selem = disk(size)
@@ -407,13 +398,7 @@ def decompose_morphological_gradient(
     else:
         selem = diamond(size)
     
-    dilated = grey_dilation(dem_filled, footprint=selem)
-    eroded = grey_erosion(dem_filled, footprint=selem)
-    
-    residual = dilated - eroded
-    trend = dem_filled - residual
-    
-    return trend, residual
+    return _morphological_decompose(dem_filled, selem, 'gradient')
 
 
 @register_decomposition(
@@ -433,7 +418,7 @@ def decompose_tophat_combined(dem: np.ndarray, size: int = 20) -> tuple:
     """
     from scipy.ndimage import white_tophat, black_tophat
     
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     selem = disk(size)
     
     white_th = white_tophat(dem_filled, footprint=selem)
@@ -475,7 +460,7 @@ def decompose_anisotropic_diffusion(
     kappa: edge threshold (higher = more smoothing)
     gamma: diffusion speed (0-0.25 for stability)
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     img = dem_filled.copy().astype(np.float64)
     
@@ -526,7 +511,7 @@ def decompose_rolling_ball(dem: np.ndarray, radius: int = 50) -> tuple:
     """
     from scipy.ndimage import grey_erosion, grey_dilation, zoom
     
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     original_shape = dem_filled.shape
     
     # For large radii, use downsampling to reduce memory
@@ -643,7 +628,7 @@ def decompose_local_polynomial(
     """
     from scipy.ndimage import uniform_filter
     
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     
@@ -714,7 +699,7 @@ def decompose_guided(
     eps: regularization (higher = more smoothing)
     radius: window size
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Normalize for numerical stability
     dem_min, dem_max = dem_filled.min(), dem_filled.max()
@@ -770,7 +755,7 @@ def decompose_polynomial_high(dem: np.ndarray, degree: int = 4) -> tuple:
     For capturing complex regional trends (valleys, ridges).
     Higher degrees can overfit, but useful for specific terrain types.
     """
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     rows, cols = dem_filled.shape
     x = np.arange(cols)
@@ -831,7 +816,7 @@ def decompose_wavelet_biorthogonal(
     """
     import pywt
     
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     coeffs = pywt.wavedec2(dem_filled, wavelet, level=level)
     
@@ -874,7 +859,7 @@ def decompose_wavelet_reverse_biorthogonal(
     """
     import pywt
     
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     coeffs = pywt.wavedec2(dem_filled, wavelet, level=level)
     

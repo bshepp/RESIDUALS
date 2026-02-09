@@ -14,6 +14,7 @@ from scipy.interpolate import RectBivariateSpline
 import cv2
 
 from .registry import register_upsampling
+from ..utils.preprocessing import fill_nans
 
 
 # =============================================================================
@@ -34,8 +35,7 @@ def upsample_bicubic(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     
     Standard baseline method. Order=3 for cubic interpolation.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     return zoom(dem_filled, scale, order=3)
 
@@ -54,8 +54,7 @@ def upsample_lanczos(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     
     Better edge preservation than bicubic, commonly used in image processing.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)
@@ -92,8 +91,7 @@ def upsample_bspline(
     
     Quadratic splines are smoother but less sharp than cubic.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Order=2 gives quadratic spline, different from bicubic (order=3)
     return zoom(dem_filled, scale, order=2)
@@ -121,8 +119,7 @@ def upsample_fft_zeropad(dem: np.ndarray, scale: int = 2) -> np.ndarray:
     Note: Places frequency components in corners (standard FFT layout)
     rather than using fftshift, which handles odd dimensions correctly.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     h, w = dem_filled.shape
     new_h, new_w = int(h * scale), int(w * scale)

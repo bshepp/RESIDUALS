@@ -38,9 +38,9 @@ def compute_checksum(filepath: Path) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description='Generate checksums for exhaustive results')
-    parser.add_argument('--source', type=str, default=r'D:\DIVERGE_exhaustive\results',
+    parser.add_argument('--source', type=str, default=r'D:\RESIDUALS_exhaustive\results',
                         help='Source directory with .npy files')
-    parser.add_argument('--output', type=str, default=r'F:\science-projects\DIVERGE\results\CHECKSUMS.txt',
+    parser.add_argument('--output', type=str, default=r'F:\science-projects\RESIDUALS\results\CHECKSUMS.txt',
                         help='Output manifest file')
     parser.add_argument('--force', action='store_true',
                         help='Recompute all checksums (ignore existing)')

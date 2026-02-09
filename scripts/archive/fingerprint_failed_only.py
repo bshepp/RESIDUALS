@@ -53,14 +53,14 @@ def find_large_files(results_dir: Path, size_threshold_mb: float = 500) -> list:
 
 
 def main():
-    results_dir = Path(r'D:\DIVERGE_exhaustive\results')
+    results_dir = Path(r'D:\RESIDUALS_exhaustive\results')
     
     # Load the FULL fingerprint data from the original analysis if it exists
     # The original run completed 38,634 files successfully
-    original_json = Path(r'F:\science-projects\DIVERGE\results\REDUNDANCY_REPORT.json')
+    original_json = Path(r'F:\science-projects\RESIDUALS\results\REDUNDANCY_REPORT.json')
     
     # Load our checkpoint (has ~1,600 fingerprints from recent run)
-    checkpoint_file = Path(r'F:\science-projects\DIVERGE\results\fingerprint_checkpoint.json')
+    checkpoint_file = Path(r'F:\science-projects\RESIDUALS\results\fingerprint_checkpoint.json')
     
     existing = {}
     if checkpoint_file.exists():

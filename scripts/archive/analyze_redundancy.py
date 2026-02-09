@@ -517,13 +517,13 @@ def main():
         description='Analyze RESIDUALS exhaustive results for redundancy'
     )
     parser.add_argument('--checksums', type=str, 
-                        default=r'F:\science-projects\DIVERGE\results\CHECKSUMS.txt',
+                        default=r'F:\science-projects\RESIDUALS\results\CHECKSUMS.txt',
                         help='Path to checksums file')
     parser.add_argument('--results', type=str,
-                        default=r'D:\DIVERGE_exhaustive\results',
+                        default=r'D:\RESIDUALS_exhaustive\results',
                         help='Path to results directory (READ ONLY)')
     parser.add_argument('--output', type=str,
-                        default=r'F:\science-projects\DIVERGE\results\REDUNDANCY_REPORT.md',
+                        default=r'F:\science-projects\RESIDUALS\results\REDUNDANCY_REPORT.md',
                         help='Output report path')
     parser.add_argument('--fast', action='store_true',
                         help='Skip correlation sampling (faster)')

@@ -68,13 +68,13 @@ Major categories:
 
 **Commands**:
 ```bash
-cd F:\science-projects\DIVERGE
+cd F:\science-projects\RESIDUALS
 
 # Extract list of failed files
 python extract_failed_combinations.py --log exhaustive_experiment.log --output failed_combinations.txt
 
 # Rerun only failed combinations
-python run_exhaustive.py --output D:\DIVERGE_exhaustive --combinations-file failed_combinations.txt
+python run_exhaustive.py --output D:\RESIDUALS_exhaustive --combinations-file failed_combinations.txt
 ```
 
 ### Phase 3: Re-run Redundancy Analysis on Large Files

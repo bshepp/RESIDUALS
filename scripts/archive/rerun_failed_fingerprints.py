@@ -17,10 +17,10 @@ from analyze_redundancy import compute_fingerprint
 
 
 def main():
-    results_dir = Path(r'D:\DIVERGE_exhaustive\results')
+    results_dir = Path(r'D:\RESIDUALS_exhaustive\results')
     
     # Load existing fingerprints from the redundancy report
-    existing_fp_file = Path(r'F:\science-projects\DIVERGE\results\fingerprint_checkpoint.json')
+    existing_fp_file = Path(r'F:\science-projects\RESIDUALS\results\fingerprint_checkpoint.json')
     
     if existing_fp_file.exists():
         with open(existing_fp_file, 'r') as f:

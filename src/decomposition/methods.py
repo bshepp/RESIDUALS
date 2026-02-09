@@ -18,6 +18,7 @@ import cv2
 import pywt
 
 from .registry import register_decomposition
+from ..utils.preprocessing import fill_nans
 
 
 # =============================================================================
@@ -38,8 +39,7 @@ def decompose_gaussian(dem: np.ndarray, sigma: float = 10) -> tuple:
     
     Simple and fast baseline method. Treats all directions equally.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     trend = gaussian_filter(dem_filled, sigma=sigma)
     residual = dem_filled - trend
@@ -70,8 +70,7 @@ def decompose_bilateral(
     
     Smooths while preserving edges. Good for roads, walls, embankments.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Normalize to 0-255 range for cv2
     dem_min, dem_max = dem_filled.min(), dem_filled.max()
@@ -116,8 +115,7 @@ def decompose_wavelet_dwt(
     
     Separates into approximation (trend) and detail (residual) coefficients.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Perform 2D DWT
     coeffs = pywt.wavedec2(dem_filled, wavelet, level=level)
@@ -168,26 +166,11 @@ def decompose_morphological(
     Opening removes bright features smaller than the element.
     Closing removes dark features smaller than the element.
     """
-    from scipy.ndimage import grey_opening, grey_closing
+    from .methods_extended import _morphological_decompose
     
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
-    
-    # Create structuring element (disk shape)
+    dem_filled = fill_nans(dem)
     selem = disk(size)
-    
-    if operation == 'opening':
-        trend = grey_opening(dem_filled, footprint=selem)
-    elif operation == 'closing':
-        trend = grey_closing(dem_filled, footprint=selem)
-    else:  # 'average' - opening-closing average
-        opened = grey_opening(dem_filled, footprint=selem)
-        closed = grey_closing(dem_filled, footprint=selem)
-        trend = (opened + closed) / 2
-    
-    residual = dem_filled - trend
-    
-    return trend, residual
+    return _morphological_decompose(dem_filled, selem, operation)
 
 
 @register_decomposition(
@@ -214,8 +197,7 @@ def decompose_tophat(
     """
     from scipy.ndimage import white_tophat, black_tophat
     
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     # Create structuring element
     selem = disk(size)
@@ -248,8 +230,7 @@ def decompose_polynomial(dem: np.ndarray, degree: int = 2) -> tuple:
     
     Fits a polynomial surface and subtracts it to reveal local features.
     """
-    # Handle NaN values
-    dem_filled = np.nan_to_num(dem, nan=np.nanmean(dem))
+    dem_filled = fill_nans(dem)
     
     rows, cols = dem_filled.shape
     x = np.arange(cols)

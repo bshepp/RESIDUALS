@@ -90,7 +90,7 @@ def main():
     dem = np.load(dem_path)
     print(f"Loaded DEM: {dem.shape}")
     
-    output_dir = Path('D:/DIVERGE_exhaustive/results')
+    output_dir = Path('D:/RESIDUALS_exhaustive/results')
     
     # Cache decomposition results to avoid recomputing
     decomp_cache = {}
