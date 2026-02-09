@@ -28,12 +28,24 @@ git clone https://github.com/bshepp/RESIDUALS.git
 cd RESIDUALS
 pip install -r requirements.txt
 
-# Run with included test DEM
-python run_experiment.py
+# Run the demo (auto-selects best available DEM)
+python demo.py
 
-# Or generate your own from LiDAR
+# Run with a specific archaeological site
+python demo.py --site hopewell_road     # Great Hopewell Road
+python demo.py --site great_circle      # Great Circle Earthworks (Newark)
+
+# Run the best-of pipeline (20 methods x 3 upsamplers = 60 combos)
+python run_bestof.py --dem data/test_dems/fairfield_sample_1.5ft.npy
+
+# Full experiment (all methods x all upsamplers)
+python run_experiment.py --dem data/test_dems/fairfield_sample_1.5ft.npy
+
+# Generate a DEM from LiDAR tiles
 python generate_test_dem.py --lidar-dir /path/to/las/files --grid-rows 4 --grid-cols 4
-python run_experiment.py --dem data/test_dems/your_dem.npy
+
+# Generate the Licking County Hopewell sites DEM (requires local LiDAR data)
+python generate_licking_dem.py
 ```
 
 ## Decomposition Methods
@@ -60,6 +72,30 @@ Extended methods include: anisotropic Gaussian, median, DoG, LoG, guided filter,
 
 Extended methods include: nearest, bilinear, quadratic, quartic, quintic, windowed sinc (Hamming, Blackman), Catmull-Rom, Mitchell-Netravali, and edge-directed interpolation.
 
+## Best-Of Pipeline
+
+The exhaustive analysis of 39,731 combinations found 20 truly distinct method clusters. The best-of pipeline runs one representative per cluster with 3 upsamplers = **60 combinations** that cover the full diversity:
+
+```bash
+python run_bestof.py --dem data/test_dems/fairfield_sample_1.5ft.npy
+python run_bestof.py --dem data/test_dems/licking_hopewell_2.5ft.npy --output results/hopewell
+```
+
+See `run_bestof.py` for the full cluster table with descriptions of what each method reveals.
+
+## Archaeological Demo
+
+The demo targets two Hopewell-culture sites in Licking County, Ohio:
+
+- **Great Hopewell Road** — a subtle ~60 ft wide raised embankment, often <1 ft above surrounding terrain, nearly invisible in raw hillshade but visible in DoG and morphological residuals.
+- **Great Circle Earthworks** — a ~1050 ft diameter circular enclosure (part of the Newark Earthworks, UNESCO World Heritage Site), visible in top-hat and rolling ball residuals.
+
+```bash
+python demo.py --site hopewell_road      # side-by-side: hillshade vs. residuals
+python demo.py --site great_circle       # same for the Great Circle
+python demo.py                           # full DEM grid view
+```
+
 ## Exhaustive Parameter Exploration
 
 ```bash
@@ -68,9 +104,6 @@ python run_exhaustive.py --output results/exhaustive
 
 # Limited test run
 python run_exhaustive.py --max-decomp 2 --max-upsamp 2
-
-# Analyze redundancy across outputs
-python analyze_redundancy.py --results D:\path\to\results --checksums results\CHECKSUMS.txt
 ```
 
 Generates comprehensive documentation of all method combinations with statistics and hashes.
@@ -102,24 +135,39 @@ The main output is a grid showing:
 
 Each cell reveals different features. The Δ columns show where each method matches or misses ground truth features. The divergence columns show where methods disagree — useful for identifying features that are method-sensitive.
 
+## Testing
+
+166 tests covering decomposition, upsampling, registry, analysis, and preprocessing:
+
+```bash
+python -m pytest tests/ -v
+```
+
+Includes 22 known-answer tests that verify methods against mathematically predictable inputs (Gaussian on linear ramps, polynomial on planes, top-hat on spikes, etc.).
+
 ## Project Structure
 
 ```
 RESIDUALS/
 ├── src/
-│   ├── decomposition/     # 25 decomposition algorithms
-│   ├── upsampling/        # 19 upsampling methods  
-│   ├── analysis/          # Differential computation, feature detection
-│   └── utils/             # Visualization, I/O
-├── data/test_dems/        # Sample DEMs
+│   ├── decomposition/        # 25 decomposition algorithms
+│   ├── upsampling/           # 19 upsampling methods
+│   ├── analysis/             # Differential computation, feature detection
+│   └── utils/                # Visualization, I/O, preprocessing
+├── tests/                    # 166 pytest tests (known-answer, registry, etc.)
+├── data/test_dems/           # Sample DEMs + metadata
 ├── results/
-│   ├── combinations/      # Raw residual arrays (.npy)
-│   ├── differentials/     # Pairwise differences
-│   ├── visualizations/    # Output images (timestamped)
-│   └── debug_archive/     # Bug documentation
-├── generate_test_dem.py   # Create DEM from LiDAR tiles
-├── run_experiment.py      # Main experiment runner
-└── run_exhaustive.py      # Full parameter space exploration
+│   ├── combinations/         # Raw residual arrays (.npy)
+│   ├── differentials/        # Pairwise differences
+│   ├── visualizations/       # Output images
+│   └── debug_archive/        # Bug documentation
+├── scripts/archive/          # One-off diagnostic scripts (not part of core)
+├── demo.py                   # Archaeological site demo (Hopewell Road, Great Circle)
+├── run_bestof.py             # Best-of pipeline (20 clusters x 3 upsamplers)
+├── run_experiment.py         # Full experiment runner
+├── run_exhaustive.py         # Exhaustive parameter space exploration
+├── generate_test_dem.py      # Create DEM from LiDAR tiles
+└── generate_licking_dem.py   # Generate Licking County Hopewell sites DEM
 ```
 
 ## Applications
@@ -167,5 +215,6 @@ Apache License 2.0
 
 ## Acknowledgments
 
-- Sample LiDAR data: Connecticut Environmental Conditions Online (CT ECO)
-- Built in CUrsor with: Opus 4.5, NumPy, SciPy, scikit-image, PyWavelets, OpenCV, Matplotlib
+- Licking County LiDAR: Ohio Statewide Imagery Program (OSIP) 2015
+- Fairfield County LiDAR: Connecticut Environmental Conditions Online (CT ECO)
+- Built in Cursor with: Claude, NumPy, SciPy, scikit-image, PyWavelets, OpenCV, Matplotlib

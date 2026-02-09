@@ -41,6 +41,15 @@ data/test_dems/*.npy
 data/test_dems/*.tif
 !data/test_dems/fairfield_sample_*.npy
 
+# Demo output images (regenerable)
+demo_output.png
+demo_hopewell_road.png
+demo_great_circle.png
+
+# Temporary script output
+dem_gen_output.txt
+test_output.txt
+
 # Large result files (keep key outputs)
 results/differentials/*.npy
 results/combinations/*.npy
