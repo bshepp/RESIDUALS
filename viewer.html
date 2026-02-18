@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESIDUALS: Licking County Viewer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #map { width: 100vw; height: 100vh; }
+
+  #panel {
+    display: none;
+    position: fixed;
+    top: 0; right: 0;
+    width: 55%;
+    height: 100vh;
+    background: #111;
+    z-index: 1000;
+    overflow: auto;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.5);
+  }
+  #panel.open { display: block; }
+  #panel img {
+    width: 100%;
+    display: block;
+  }
+  #panel-header {
+    position: sticky;
+    top: 0;
+    background: #222;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+  }
+  #panel-header h2 {
+    color: #eee;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  #close-btn {
+    background: none;
+    border: 1px solid #666;
+    color: #ccc;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  #close-btn:hover { background: #444; }
+
+  #info {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: #eee;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    z-index: 900;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="panel">
+  <div id="panel-header">
+    <h2 id="panel-title">Tile</h2>
+    <button id="close-btn" onclick="closePanel()">Close</button>
+  </div>
+  <img id="panel-img" src="" alt="Tile analysis" />
+</div>
+
+<div id="info">Loading tiles...</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const TILE_DIR = 'results/county_tiles/';
+const DATA_URL = TILE_DIR + 'viewer_data.json';
+
+const map = L.map('map', { zoomControl: true }).setView([40.05, -82.4], 11);
+
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Esri World Imagery',
+  maxZoom: 19,
+}).addTo(map);
+
+const processed = L.layerGroup().addTo(map);
+const pending   = L.layerGroup().addTo(map);
+const sites     = L.layerGroup().addTo(map);
+
+fetch(DATA_URL)
+  .then(r => r.json())
+  .then(data => {
+    const info = document.getElementById('info');
+    info.textContent = `${data.total_processed} / ${data.total_tiles} tiles processed`;
+
+    data.tiles.forEach(t => {
+      const style = t.has_png
+        ? { color: '#00ff88', weight: 1.5, fillOpacity: 0.08, fillColor: '#00ff88' }
+        : { color: '#888',    weight: 0.8, fillOpacity: 0.03, fillColor: '#888' };
+
+      const rect = L.rectangle(t.bounds, style);
+      rect.bindTooltip(t.id, {
+        permanent: false,
+        direction: 'center',
+        className: 'tile-label',
+      });
+
+      if (t.has_png) {
+        rect.on('click', () => openPanel(t));
+        rect.addTo(processed);
+      } else {
+        rect.addTo(pending);
+      }
+    });
+
+    data.sites.forEach(s => {
+      L.marker([s.lat, s.lon], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="
+            width:12px; height:12px;
+            background:red; border:2px solid white;
+            border-radius:50%; transform:translate(-6px,-6px);
+          "></div>`,
+        }),
+      })
+        .bindTooltip(s.name, { permanent: true, direction: 'right', offset: [8, 0] })
+        .addTo(sites);
+    });
+
+    // Fit to data bounds
+    const allBounds = data.tiles
+      .filter(t => t.has_png)
+      .map(t => t.bounds);
+    if (allBounds.length > 0) {
+      const group = L.featureGroup(allBounds.map(b => L.rectangle(b)));
+      map.fitBounds(group.getBounds().pad(0.05));
+    }
+
+    setTimeout(() => { info.style.opacity = '0'; info.style.transition = 'opacity 1s'; }, 4000);
+  })
+  .catch(err => {
+    document.getElementById('info').textContent =
+      'Failed to load viewer_data.json. Run: python build_viewer.py';
+    console.error(err);
+  });
+
+
+function openPanel(tile) {
+  const panel = document.getElementById('panel');
+  document.getElementById('panel-title').textContent =
+    `Tile ${tile.id} (Row ${tile.row}, Col ${tile.col})`;
+  document.getElementById('panel-img').src = TILE_DIR + tile.png;
+  panel.classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePanel();
+});
+</script>
+</body>
+</html>

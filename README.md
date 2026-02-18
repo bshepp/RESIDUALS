@@ -96,6 +96,62 @@ python demo.py --site great_circle       # same for the Great Circle
 python demo.py                           # full DEM grid view
 ```
 
+## Road Corridor Trace
+
+Extends the Hopewell Road detection across all of Licking County. Generates a corridor of DEM strips along the detected road bearing, applies multi-method residual analysis with ridge detection, and outputs georeferenced GeoTIFFs and a GeoJSON centerline.
+
+```bash
+# Full corridor trace (~4 hours, processes ~13 DEM strips)
+python trace_road.py
+
+# Quick test with fewer strips
+python trace_road.py --max-strips 2
+
+# Reuse existing strip DEMs (skip regeneration)
+python trace_road.py --skip-dem-gen
+```
+
+Outputs:
+- `results/hopewell_trace/corridor_confidence.tif` — multi-method consensus heatmap (GeoTIFF)
+- `results/hopewell_trace/corridor_residual_tophat.tif` — best single-method residual (GeoTIFF)
+- `results/hopewell_trace/road_centerline.geojson` — detected road polyline
+- `results/hopewell_trace/corridor_overview.png` — summary figure
+
+## County Grid Tiling
+
+Blankets all of Licking County with a regular 2-mile grid of DEM tiles, computing professional archaeological visualizations for each. Each tile produces a 12-panel PNG comparing visualization methods, terrain shape analysis, and feature extraction techniques.
+
+```bash
+# Full county (~200 tiles, ~20 hours first run, ~7 hours cached re-render)
+python tile_county.py
+
+# Process a subset of tiles (0-indexed row/col ranges)
+python tile_county.py --rows 3-5 --cols 7-10
+
+# Re-render PNGs from cached DEMs + SVF (skips expensive generation)
+python tile_county.py --png-only
+
+# Just regenerate the county index map
+python tile_county.py --index-only
+```
+
+Each tile's 12-panel figure includes:
+
+| Row | Purpose | Panels |
+|-----|---------|--------|
+| Visualization | Professional methods | Multi-Dir Hillshade, SVF, RRIM, Slope |
+| Terrain Shape | Openness + baselines | Positive Openness, Negative Openness, SLRM, TPI |
+| Feature Extraction | TopHat multi-scale | r=50ft (road), r=7.5ft (fine), r=25ft (embankment), r=100ft (landscape) |
+
+Outputs:
+- `results/county_tiles/R04_C08.png` — 12-panel visualization per tile
+- `results/county_tiles/R04_C08_dem.npy` — cached DEM array (~143 MB)
+- `results/county_tiles/R04_C08_svf.npy` — cached Sky-View Factor (~71 MB)
+- `results/county_tiles/index_map.png` — county overview with numbered tile boxes
+- `results/county_tiles/metadata.json` — grid dimensions and processing status
+
+Disk usage: ~84 GB for all 200 tiles (DEMs + SVF/openness caches + PNGs).
+
 ## Exhaustive Parameter Exploration
 
 ```bash
@@ -163,6 +219,8 @@ RESIDUALS/
 │   └── debug_archive/        # Bug documentation
 ├── scripts/archive/          # One-off diagnostic scripts (not part of core)
 ├── demo.py                   # Archaeological site demo (Hopewell Road, Great Circle)
+├── tile_county.py            # County grid tiling: 200 tiles x 12-panel visualizations
+├── trace_road.py             # Corridor trace: extend road detection across county
 ├── run_bestof.py             # Best-of pipeline (20 clusters x 3 upsamplers)
 ├── run_experiment.py         # Full experiment runner
 ├── run_exhaustive.py         # Exhaustive parameter space exploration
@@ -189,13 +247,44 @@ Different decomposition methods excel at different feature types — the grid vi
 
 See `results/debug_archive/README.md` for documented bugs and fixes.
 
+## Roadmap
+
+### Phase 1: County Corpus (current)
+Complete the Licking County grid tiling — 200 tiles with cached DEMs, SVF, openness, and multi-scale TopHat residuals. This produces the searchable corpus for all downstream work.
+
+### Phase 2: Index the Corpus
+Run [terravector](https://github.com/bshepp/terravector) on the cached DEMs to build an HNSW index of ~1.7 million terrain patches across Licking County. Enable queries like "find all patches that look like the Great Circle mound."
+
+### Phase 3: Recommendation API
+Build the RESIDUALS-as-a-Service prototype (see `terravector/docs/RESIDUALS_SERVICE_CONCEPT.md`): given a terrain patch, recommend which decomposition method will best reveal its features, using the indexed corpus as training data.
+
+### Phase 4: GIS Plugins
+Package the indexing and query pipeline as a QGIS plugin. Target UX: "Right-click a patch → Find Similar Terrain" with sub-millisecond results. Consider ArcGIS plugin as a second target.
+
+### Phase 5: GPU Acceleration
+Move the expensive per-tile computations (SVF horizon scanning, morphological operations, decomposition methods) to GPU via CuPy or CUDA kernels. Target: real-time processing for interactive use.
+
+### Phase 6: Cloud Deployment
+Host the index and recommendation API on AWS/GCP for public access. Enable researchers to query against the corpus without local infrastructure.
+
+### Phase 7: ML Feature Classifiers
+Train classifiers on the indexed corpus to automatically identify feature types (mounds, roads, enclosures, natural formations). This sits as a **separate layer on top** of the pure algorithmic core — RESIDUALS and terravector remain training-free signal processing tools that work without any ML dependency.
+
+### Architecture Note
+
+The stack is intentionally layered so each level works independently:
+
+```
+Layer 3: ML classifiers (optional, trained on indexed corpus)
+Layer 2: terravector (HNSW indexing + similarity search)
+Layer 1: RESIDUALS (pure signal decomposition + feature extraction)
+```
+
+RESIDUALS must never depend on ML. terravector must never depend on ML. The ML layer consumes their outputs but the algorithmic tools remain usable, interpretable, and reproducible without it.
+
 ## Contributing
 
-Contributions welcome. Areas of interest:
-- Additional decomposition methods
-- GPU acceleration for large DEMs
-- Machine learning feature classifiers
-- Integration with GIS workflows
+Contributions welcome across any roadmap phase. See the roadmap above for current priorities.
 
 ## Citation
 

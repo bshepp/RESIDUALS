@@ -49,6 +49,16 @@ demo_great_circle.png
 # Temporary script output
 dem_gen_output.txt
 test_output.txt
+trace_test_output.txt
+trace_*_output.txt
+county_run*.log
+
+# Trace corridor outputs (large, regenerable)
+results/hopewell_trace/
+results/hopewell_trace_test/
+
+# County tile outputs (large, regenerable)
+results/county_tiles/
 
 # Large result files (keep key outputs)
 results/differentials/*.npy
