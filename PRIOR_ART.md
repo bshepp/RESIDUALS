@@ -589,10 +589,10 @@ All results can be reproduced by running:
 python run_exhaustive.py --dem <path_to_dem>
 
 # Generate SHA-256 checksums
-python generate_checksums.py --source <results_dir>
+python scripts/archive/generate_checksums.py --source <results_dir>
 
 # Run redundancy analysis
-python analyze_redundancy.py --results <results_dir> --checksums results/CHECKSUMS.txt
+python scripts/archive/analyze_redundancy.py --results <results_dir> --checksums results/CHECKSUMS.txt
 ```
 
 ### Verification

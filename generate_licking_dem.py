@@ -10,6 +10,7 @@ Outputs:
 
 import numpy as np
 import json
+import os
 import sys
 from pathlib import Path
 from pyproj import Transformer
@@ -36,8 +37,6 @@ SITES = {
     },
 }
 
-LIDAR_DIR = Path(r'F:\science-projects\lidar_super_rez\data\licking_2015')
-TILE_INDEX = LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
 OUTPUT_NPY = Path('data/test_dems/licking_hopewell_2.5ft.npy')
 OUTPUT_JSON = Path('data/test_dems/licking_hopewell_2.5ft.json')
 
@@ -45,9 +44,36 @@ RESOLUTION = 2.5   # feet per pixel
 MARGIN = 2000       # feet of padding around sites
 
 
+def _resolve_lidar_dir(cli_arg=None):
+    """Resolve LiDAR directory from CLI arg, env var, or fail."""
+    candidates = [cli_arg, os.environ.get('RESIDUALS_LIDAR_DIR')]
+    for raw in candidates:
+        if raw:
+            p = Path(raw)
+            if p.exists():
+                return p
+    raise FileNotFoundError(
+        "LiDAR directory not found. Provide --lidar-dir or set RESIDUALS_LIDAR_DIR"
+    )
+
+
 def main():
+    import argparse
     import laspy
     from scipy.interpolate import griddata
+
+    parser = argparse.ArgumentParser(
+        description='Generate Licking County Hopewell sites DEM from LiDAR')
+    parser.add_argument('--lidar-dir', type=str, default=None,
+                        help='LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)')
+    parser.add_argument('--tile-index', type=str, default=None,
+                        help='Path to tile index shapefile')
+    args = parser.parse_args()
+
+    LIDAR_DIR = _resolve_lidar_dir(args.lidar_dir)
+    TILE_INDEX = Path(args.tile_index) if args.tile_index else (
+        LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
+    )
 
     # --- Convert site coords to State Plane --------------------------------
     transformer = Transformer.from_crs('EPSG:4326', 'EPSG:3735', always_xy=True)

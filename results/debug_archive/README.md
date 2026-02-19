@@ -11,11 +11,11 @@ The `morphological` and `tophat` decomposition methods show edge artifacts where
 
 **Impact**: Minimal for real-world use. Map edges will be far from areas of interest in rendered images when using larger DEMs.
 
-**Files**: `morphological_edge_fix_comparison.png`, `morphological_edge_mask.png` in `results/visualizations/`
+**Files**: `morphological_edge_fix_comparison.png`, `morphological_edge_mask.png` in `results/visualizations/` (gitignored; regenerable via `run_experiment.py`)
 
 ---
 
-## 2024-12-30: FFT Zero-Padding Bug
+## 2025-12-30: FFT Zero-Padding Bug
 
 ### Problem
 The `fft_zeropad` upsampling method produced completely wrong output with vertical color bands instead of preserving terrain structure.
@@ -61,6 +61,6 @@ result = np.real(np.fft.ifft2(padded)) * (scale ** 2)
 ```
 
 ### Files
-- `fft_broken_output.png` - The broken FFT upsampling result
-- `fft_fixed_output.png` - The corrected result
+- `fft_broken_output.png` - The broken FFT upsampling result (gitignored; regenerable)
+- `fft_fixed_output.png` - The corrected result (gitignored; regenerable)
 

@@ -1,5 +1,7 @@
 # RESIDUALS: Multi-Method Differential Feature Detection
 
+[![CI](https://github.com/bshepp/RESIDUALS/actions/workflows/ci.yml/badge.svg)](https://github.com/bshepp/RESIDUALS/actions/workflows/ci.yml)
+
 **A framework for feature detection in Digital Elevation Models using systematic decomposition and differential analysis.**
 
 ![Sample Output](results/visualizations/residuals_grid_preview.png)
@@ -26,6 +28,11 @@ RESIDUALS systematically tests combinations of signal decomposition and upsampli
 # Clone and install
 git clone https://github.com/bshepp/RESIDUALS.git
 cd RESIDUALS
+pip install -e .              # core dependencies
+pip install -e ".[geo]"       # + geospatial (rasterio, geopandas, laspy)
+pip install -e ".[all]"       # everything including dev tools
+
+# Or use requirements.txt (equivalent to core + geo)
 pip install -r requirements.txt
 
 # Run the demo (auto-selects best available DEM)
@@ -45,7 +52,7 @@ python run_experiment.py --dem data/test_dems/fairfield_sample_1.5ft.npy
 python generate_test_dem.py --lidar-dir /path/to/las/files --grid-rows 4 --grid-cols 4
 
 # Generate the Licking County Hopewell sites DEM (requires local LiDAR data)
-python generate_licking_dem.py
+python generate_licking_dem.py --lidar-dir /path/to/licking_2015
 ```
 
 ## Decomposition Methods
@@ -102,14 +109,16 @@ Extends the Hopewell Road detection across all of Licking County. Generates a co
 
 ```bash
 # Full corridor trace (~4 hours, processes ~13 DEM strips)
-python trace_road.py
+python trace_road.py --lidar-dir /path/to/licking_2015
 
 # Quick test with fewer strips
-python trace_road.py --max-strips 2
+python trace_road.py --lidar-dir /path/to/licking_2015 --max-strips 2
 
 # Reuse existing strip DEMs (skip regeneration)
 python trace_road.py --skip-dem-gen
 ```
+
+All LiDAR-dependent scripts accept `--lidar-dir` or read the `RESIDUALS_LIDAR_DIR` environment variable. See `.env.example`.
 
 Outputs:
 - `results/hopewell_trace/corridor_confidence.tif` — multi-method consensus heatmap (GeoTIFF)
@@ -123,10 +132,10 @@ Blankets all of Licking County with a regular 2-mile grid of DEM tiles, computin
 
 ```bash
 # Full county (~200 tiles, ~20 hours first run, ~7 hours cached re-render)
-python tile_county.py
+python tile_county.py --lidar-dir /path/to/licking_2015
 
 # Process a subset of tiles (0-indexed row/col ranges)
-python tile_county.py --rows 3-5 --cols 7-10
+python tile_county.py --lidar-dir /path/to/licking_2015 --rows 3-5 --cols 7-10
 
 # Re-render PNGs from cached DEMs + SVF (skips expensive generation)
 python tile_county.py --png-only
@@ -196,10 +205,29 @@ Each cell reveals different features. The Δ columns show where each method matc
 166 tests covering decomposition, upsampling, registry, analysis, and preprocessing:
 
 ```bash
-python -m pytest tests/ -v
+pytest                     # uses settings from pyproject.toml
+python -m pytest tests/ -v # equivalent
 ```
 
 Includes 22 known-answer tests that verify methods against mathematically predictable inputs (Gaussian on linear ramps, polynomial on planes, top-hat on spikes, etc.).
+
+## Development
+
+```bash
+# Install with dev dependencies
+pip install -e ".[all]"
+
+# Run tests
+pytest
+
+# Lint
+ruff check .
+
+# Auto-format
+ruff format .
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add new methods and submit changes.
 
 ## Project Structure
 
@@ -218,6 +246,8 @@ RESIDUALS/
 │   ├── visualizations/       # Output images
 │   └── debug_archive/        # Bug documentation
 ├── scripts/archive/          # One-off diagnostic scripts (not part of core)
+├── .github/workflows/        # CI: lint + test on push/PR
+├── pyproject.toml            # Package metadata, dependencies, tool config
 ├── demo.py                   # Archaeological site demo (Hopewell Road, Great Circle)
 ├── tile_county.py            # County grid tiling: 200 tiles x 12-panel visualizations
 ├── trace_road.py             # Corridor trace: extend road detection across county
@@ -284,7 +314,7 @@ RESIDUALS must never depend on ML. terravector must never depend on ML. The ML l
 
 ## Contributing
 
-Contributions welcome across any roadmap phase. See the roadmap above for current priorities.
+Contributions welcome across any roadmap phase. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding conventions, and how to add new methods.
 
 ## Citation
 

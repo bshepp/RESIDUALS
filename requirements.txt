@@ -1,4 +1,8 @@
 # RESIDUALS: Decomposition x Upsampling Experimental Framework
+#
+# Prefer: pip install -e ".[all]"  (uses pyproject.toml)
+# This file is kept for backward compatibility.
+#
 # Core dependencies
 
 numpy>=1.21.0

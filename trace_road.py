@@ -50,9 +50,21 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-LIDAR_DIR = Path(r'F:\science-projects\lidar_super_rez\data\licking_2015')
-TILE_INDEX = LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
 EXISTING_DEM = Path('data/test_dems/licking_hopewell_2.5ft.npy')
+
+
+def _resolve_lidar_dir(cli_arg=None):
+    """Resolve LiDAR directory from CLI arg, env var, or fail."""
+    import os
+    candidates = [cli_arg, os.environ.get('RESIDUALS_LIDAR_DIR')]
+    for raw in candidates:
+        if raw:
+            p = Path(raw)
+            if p.exists():
+                return p
+    raise FileNotFoundError(
+        "LiDAR directory not found. Provide --lidar-dir or set RESIDUALS_LIDAR_DIR"
+    )
 EXISTING_META = Path('data/test_dems/licking_hopewell_2.5ft.json')
 OUTPUT_DIR = Path('results/hopewell_trace')
 CRS = 'EPSG:3735'
@@ -169,6 +181,7 @@ def generate_corridor_strips(
     origin_y: float,
     bearing: float,
     max_strips_per_dir: int = 50,
+    tile_index_path: Path = None,
 ) -> list:
     """
     Generate a list of strip definitions along the corridor.
@@ -184,7 +197,7 @@ def generate_corridor_strips(
     logger.info("Step 2: Computing corridor strip geometry ...")
 
     # Load tile index to find county bounds
-    tiles = gpd.read_file(TILE_INDEX)
+    tiles = gpd.read_file(tile_index_path)
     county_bounds = tiles.total_bounds  # (x_min, y_min, x_max, y_max)
     logger.info(f"  County bounds: X=[{county_bounds[0]:.0f}, {county_bounds[2]:.0f}], "
                 f"Y=[{county_bounds[1]:.0f}, {county_bounds[3]:.0f}]")
@@ -257,7 +270,9 @@ def generate_corridor_strips(
 # Step 3: Generate strip DEM from LAS tiles
 # =========================================================================
 
-def generate_strip_dem(strip: dict, tile_gdf: gpd.GeoDataFrame) -> np.ndarray:
+def generate_strip_dem(
+    strip: dict, tile_gdf: gpd.GeoDataFrame, lidar_dir: Path = None
+) -> np.ndarray:
     """
     Generate a DEM array for one corridor strip.
 
@@ -279,7 +294,7 @@ def generate_strip_dem(strip: dict, tile_gdf: gpd.GeoDataFrame) -> np.ndarray:
     all_px, all_py, all_pz = [], [], []
     for _, row in matching.iterrows():
         tile_name = row['TileName']
-        las_path = LIDAR_DIR / f'{tile_name}.las'
+        las_path = lidar_dir / f'{tile_name}.las'
         if not las_path.exists():
             continue
 
@@ -728,6 +743,10 @@ def main():
                         help='Manual bearing override (degrees from +X axis, CCW positive)')
     parser.add_argument('--output', type=str, default=str(OUTPUT_DIR),
                         help=f'Output directory (default: {OUTPUT_DIR})')
+    parser.add_argument('--lidar-dir', type=str, default=None,
+                        help='LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)')
+    parser.add_argument('--tile-index', type=str, default=None,
+                        help='Path to tile index shapefile')
     args = parser.parse_args()
 
     output_dir = Path(args.output)
@@ -761,6 +780,12 @@ def main():
     bearing_deg = np.degrees(bearing)
     logger.info(f"Road bearing: {bearing_deg:.1f} degrees from +X axis")
 
+    # Resolve LiDAR paths (needed for corridor geometry and DEM generation)
+    LIDAR_DIR = _resolve_lidar_dir(args.lidar_dir)
+    TILE_INDEX = Path(args.tile_index) if args.tile_index else (
+        LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
+    )
+
     # ---- Step 2: Generate corridor geometry ----
     # Origin: midpoint between known sites
     origin_x = (HR_X + GC_X) / 2
@@ -768,7 +793,8 @@ def main():
     logger.info(f"Corridor origin: ({origin_x:.0f}, {origin_y:.0f})")
 
     strips = generate_corridor_strips(
-        origin_x, origin_y, bearing, args.max_strips
+        origin_x, origin_y, bearing, args.max_strips,
+        tile_index_path=TILE_INDEX,
     )
 
     if not strips:
@@ -805,7 +831,7 @@ def main():
                 dem = np.load(dem_cache)
                 logger.info(f"  DEM (cached): {dem.shape}")
             else:
-                dem, xi, yi = generate_strip_dem(strip, tile_gdf)
+                dem, xi, yi = generate_strip_dem(strip, tile_gdf, lidar_dir=LIDAR_DIR)
                 if dem is None:
                     logger.warning("  Not enough points, skipping")
                     continue

@@ -69,9 +69,20 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-LIDAR_DIR = Path(r'F:\science-projects\lidar_super_rez\data\licking_2015')
-TILE_INDEX = LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
 OUTPUT_DIR = Path('results/county_tiles')
+
+
+def _resolve_lidar_dir(cli_arg=None):
+    """Resolve LiDAR directory from CLI arg, env var, or fail."""
+    candidates = [cli_arg, os.environ.get('RESIDUALS_LIDAR_DIR')]
+    for raw in candidates:
+        if raw:
+            p = Path(raw)
+            if p.exists():
+                return p
+    raise FileNotFoundError(
+        "LiDAR directory not found. Provide --lidar-dir or set RESIDUALS_LIDAR_DIR"
+    )
 CRS = 'EPSG:3735'
 
 RESOLUTION = 2.5          # ft per pixel
@@ -384,7 +395,7 @@ def compute_grid(tile_gdf: gpd.GeoDataFrame) -> list:
 # DEM generation (reused from trace_road.py)
 # =========================================================================
 
-def generate_tile_dem(tile: dict, tile_gdf: gpd.GeoDataFrame):
+def generate_tile_dem(tile: dict, tile_gdf: gpd.GeoDataFrame, lidar_dir: Path = None):
     """
     Generate a DEM array for one grid tile.
 
@@ -402,7 +413,7 @@ def generate_tile_dem(tile: dict, tile_gdf: gpd.GeoDataFrame):
     all_px, all_py, all_pz = [], [], []
     for _, row in matching.iterrows():
         tile_name = row['TileName']
-        las_path = LIDAR_DIR / f'{tile_name}.las'
+        las_path = lidar_dir / f'{tile_name}.las'
         if not las_path.exists():
             continue
 
@@ -840,10 +851,19 @@ def main():
                         help='Only regenerate the index map')
     parser.add_argument('--output', type=str, default=str(OUTPUT_DIR),
                         help=f'Output directory (default: {OUTPUT_DIR})')
+    parser.add_argument('--lidar-dir', type=str, default=None,
+                        help='LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)')
+    parser.add_argument('--tile-index', type=str, default=None,
+                        help='Path to tile index shapefile')
     args = parser.parse_args()
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    LIDAR_DIR = _resolve_lidar_dir(args.lidar_dir)
+    TILE_INDEX = Path(args.tile_index) if args.tile_index else (
+        LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
+    )
 
     logger.info("=" * 70)
     logger.info("RESIDUALS: Licking County Grid Tiling")
@@ -924,7 +944,7 @@ def main():
                 continue
 
             if dem is None:
-                dem = generate_tile_dem(tile, tile_gdf)
+                dem = generate_tile_dem(tile, tile_gdf, lidar_dir=LIDAR_DIR)
                 if dem is None:
                     logger.warning("  Not enough LAS points, skipping")
                     continue

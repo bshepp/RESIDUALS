@@ -6,6 +6,7 @@ Creates a test DEM from Fairfield County LiDAR tiles for use in experiments.
 """
 
 import numpy as np
+import os
 from pathlib import Path
 import logging
 import sys
@@ -242,12 +243,13 @@ def main():
     
     lidar_dir = Path(args.lidar_dir)
     if not lidar_dir.exists():
-        # Try absolute path
-        lidar_dir = Path('F:/science-projects/lidar_super_rez/data/fairfield_2015')
-    
+        env_dir = os.environ.get('RESIDUALS_LIDAR_DIR')
+        if env_dir:
+            lidar_dir = Path(env_dir)
+
     if not lidar_dir.exists():
         logger.error(f"LiDAR directory not found: {lidar_dir}")
-        logger.error("Please specify --lidar-dir with path to LAS files")
+        logger.error("Please specify --lidar-dir or set RESIDUALS_LIDAR_DIR")
         sys.exit(1)
     
     output_path = Path(args.output)
