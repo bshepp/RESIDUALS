@@ -53,14 +53,16 @@ def main():
             lon_sw, lat_sw = transformer.transform(x_min, y_min)
             lon_ne, lat_ne = transformer.transform(x_max, y_max)
 
-            tiles.append({
-                "id": tid,
-                "row": r,
-                "col": c,
-                "bounds": [[lat_sw, lon_sw], [lat_ne, lon_ne]],
-                "has_png": tid in processed,
-                "png": f"{tid}.png",
-            })
+            tiles.append(
+                {
+                    "id": tid,
+                    "row": r,
+                    "col": c,
+                    "bounds": [[lat_sw, lon_sw], [lat_ne, lon_ne]],
+                    "has_png": tid in processed,
+                    "png": f"{tid}.png",
+                }
+            )
 
     sites = []
     for name, (sx, sy) in KNOWN_SITES.items():
@@ -83,7 +85,7 @@ def main():
     print(f"Generated {out_path}")
     print(f"  {len(processed)} / {n_rows * n_cols} tiles have PNGs")
     print(f"  {len(sites)} known sites")
-    print(f"\nOpen viewer.html in a browser to view the map.")
+    print("\nOpen viewer.html in a browser to view the map.")
 
 
 if __name__ == "__main__":

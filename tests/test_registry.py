@@ -12,16 +12,14 @@ import pytest
 
 from src.decomposition.registry import (
     DECOMPOSITION_REGISTRY,
+    get_all_methods_info,
     get_decomposition,
     list_decompositions,
-    run_decomposition,
-    get_all_methods_info,
 )
 from src.upsampling.registry import (
     UPSAMPLING_REGISTRY,
     get_upsampling,
     list_upsamplings,
-    run_upsampling,
 )
 
 
@@ -41,15 +39,11 @@ class TestDecompositionRegistry:
 
     def test_all_methods_have_default_params(self):
         for name, method in DECOMPOSITION_REGISTRY.items():
-            assert isinstance(method.default_params, dict), (
-                f"{name}: default_params is not a dict"
-            )
+            assert isinstance(method.default_params, dict), f"{name}: default_params is not a dict"
 
     def test_all_methods_have_param_ranges(self):
         for name, method in DECOMPOSITION_REGISTRY.items():
-            assert isinstance(method.param_ranges, dict), (
-                f"{name}: param_ranges is not a dict"
-            )
+            assert isinstance(method.param_ranges, dict), f"{name}: param_ranges is not a dict"
 
     def test_all_methods_are_callable(self):
         for name, method in DECOMPOSITION_REGISTRY.items():

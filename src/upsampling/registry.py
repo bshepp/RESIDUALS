@@ -5,14 +5,16 @@ Provides a decorator-based registration system for upsampling methods.
 Each method should take a DEM and scale factor, return upsampled DEM.
 """
 
-from typing import Dict, Callable, Any, List, Optional
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 
 
 @dataclass
 class UpsamplingMethod:
     """Metadata for a registered upsampling method."""
+
     name: str
     func: Callable[[np.ndarray, int], np.ndarray]
     category: str
@@ -34,11 +36,11 @@ def register_upsampling(
     param_ranges: Optional[Dict[str, List[Any]]] = None,
     preserves: str = "",
     introduces: str = "",
-    description: str = ""
+    description: str = "",
 ):
     """
     Decorator to register an upsampling method.
-    
+
     Usage:
         @register_upsampling(
             name='bicubic',
@@ -50,6 +52,7 @@ def register_upsampling(
         def upsample_bicubic(dem, scale=2):
             return zoom(dem, scale, order=3)
     """
+
     def decorator(func: Callable) -> Callable:
         method = UpsamplingMethod(
             name=name,
@@ -59,10 +62,11 @@ def register_upsampling(
             param_ranges=param_ranges or {},
             preserves=preserves,
             introduces=introduces,
-            description=description or func.__doc__ or ""
+            description=description or func.__doc__ or "",
         )
         UPSAMPLING_REGISTRY[name] = method
         return func
+
     return decorator
 
 
@@ -80,31 +84,28 @@ def list_upsamplings() -> List[str]:
 
 
 def run_upsampling(
-    name: str,
-    dem: np.ndarray,
-    scale: int = 2,
-    params: Optional[Dict[str, Any]] = None
+    name: str, dem: np.ndarray, scale: int = 2, params: Optional[Dict[str, Any]] = None
 ) -> np.ndarray:
     """
     Run an upsampling method on a DEM.
-    
+
     Args:
         name: Method name
         dem: Input DEM array
         scale: Upsampling scale factor
         params: Optional parameter overrides
-        
+
     Returns:
         Upsampled DEM array
     """
     method = get_upsampling(name)
-    
+
     # Merge default params with overrides
     run_params = {**method.default_params}
-    run_params['scale'] = scale
+    run_params["scale"] = scale
     if params:
         run_params.update(params)
-    
+
     return method.func(dem, **run_params)
 
 
@@ -113,11 +114,10 @@ def get_all_methods_info() -> Dict[str, Dict[str, Any]]:
     info = {}
     for name, method in UPSAMPLING_REGISTRY.items():
         info[name] = {
-            'category': method.category,
-            'default_params': method.default_params,
-            'preserves': method.preserves,
-            'introduces': method.introduces,
-            'description': method.description
+            "category": method.category,
+            "default_params": method.default_params,
+            "preserves": method.preserves,
+            "introduces": method.introduces,
+            "description": method.description,
         }
     return info
-

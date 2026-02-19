@@ -24,39 +24,40 @@ import json
 import logging
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import geopandas as gpd
+import numpy as np
 import rasterio
-from rasterio.transform import from_bounds
+from pyproj import Transformer
 from rasterio.merge import merge as rasterio_merge
+from rasterio.transform import from_bounds
 from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter
-from shapely.geometry import box, LineString, mapping
-from pyproj import Transformer
+from shapely.geometry import box
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler('trace_road.log'),
+        logging.FileHandler("trace_road.log"),
         logging.StreamHandler(),
-    ]
+    ],
 )
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-EXISTING_DEM = Path('data/test_dems/licking_hopewell_2.5ft.npy')
+EXISTING_DEM = Path("data/test_dems/licking_hopewell_2.5ft.npy")
 
 
 def _resolve_lidar_dir(cli_arg=None):
     """Resolve LiDAR directory from CLI arg, env var, or fail."""
     import os
-    candidates = [cli_arg, os.environ.get('RESIDUALS_LIDAR_DIR')]
+
+    candidates = [cli_arg, os.environ.get("RESIDUALS_LIDAR_DIR")]
     for raw in candidates:
         if raw:
             p = Path(raw)
@@ -65,30 +66,33 @@ def _resolve_lidar_dir(cli_arg=None):
     raise FileNotFoundError(
         "LiDAR directory not found. Provide --lidar-dir or set RESIDUALS_LIDAR_DIR"
     )
-EXISTING_META = Path('data/test_dems/licking_hopewell_2.5ft.json')
-OUTPUT_DIR = Path('results/hopewell_trace')
-CRS = 'EPSG:3735'
 
-RESOLUTION = 2.5        # ft per pixel
-STRIP_LENGTH = 10560    # 2 miles in ft
-STRIP_OVERLAP = 500     # ft overlap between strips
-CORRIDOR_WIDTH = 4000   # ft total width
+
+EXISTING_META = Path("data/test_dems/licking_hopewell_2.5ft.json")
+OUTPUT_DIR = Path("results/hopewell_trace")
+CRS = "EPSG:3735"
+
+RESOLUTION = 2.5  # ft per pixel
+STRIP_LENGTH = 10560  # 2 miles in ft
+STRIP_OVERLAP = 500  # ft overlap between strips
+CORRIDOR_WIDTH = 4000  # ft total width
 
 # Known site coordinates (State Plane, from metadata)
-HR_X, HR_Y = 1979967, 738723   # Hopewell Road segment
-GC_X, GC_Y = 1987788, 743540   # Great Circle
+HR_X, HR_Y = 1979967, 738723  # Hopewell Road segment
+GC_X, GC_Y = 1987788, 743540  # Great Circle
 
 # Methods for linear feature detection
 RESIDUAL_METHODS = [
-    ('tophat',              {'size': 20, 'mode': 'white'}),
-    ('morphological_rect',  {'operation': 'opening', 'width': 20, 'height': 5}),
-    ('dog',                 {'sigma_low': 2, 'sigma_high': 10}),
+    ("tophat", {"size": 20, "mode": "white"}),
+    ("morphological_rect", {"operation": "opening", "width": 20, "height": 5}),
+    ("dog", {"sigma_low": 2, "sigma_high": 10}),
 ]
 
 
 # =========================================================================
 # Step 1: Detect road bearing from existing data
 # =========================================================================
+
 
 def detect_bearing(dem_path: Path, meta_path: Path) -> float:
     """
@@ -99,9 +103,9 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
         Bearing in radians (angle of road axis in State Plane coordinates,
         measured counter-clockwise from the +X axis).
     """
+    from skimage.feature import canny
     from skimage.filters import meijering
     from skimage.transform import probabilistic_hough_line
-    from skimage.feature import canny
 
     logger.info("Step 1: Detecting road bearing from existing data ...")
 
@@ -110,19 +114,19 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
     with open(meta_path) as f:
         meta = json.load(f)
 
-    site = meta['sites']['hopewell_road']
-    cx, cy = int(site['pixel_x']), int(site['pixel_y'])
+    site = meta["sites"]["hopewell_road"]
+    cx, cy = int(site["pixel_x"]), int(site["pixel_y"])
     r = 400
     h, w = dem_full.shape
-    dem = dem_full[max(0, cy-r):min(h, cy+r), max(0, cx-r):min(w, cx+r)]
+    dem = dem_full[max(0, cy - r) : min(h, cy + r), max(0, cx - r) : min(w, cx + r)]
     logger.info(f"  Cropped DEM around Hopewell Road: {dem.shape}")
 
     # Compute tophat residual (best performer from demo)
-    from src.decomposition.registry import run_decomposition
-    import src.decomposition.methods           # noqa: F401
+    import src.decomposition.methods  # noqa: F401
     import src.decomposition.methods_extended  # noqa: F401
+    from src.decomposition.registry import run_decomposition
 
-    _, residual = run_decomposition('tophat', dem, {'size': 15, 'mode': 'white'})
+    _, residual = run_decomposition("tophat", dem, {"size": 15, "mode": "white"})
 
     # Apply Meijering ridge filter to enhance linear features
     ridge = meijering(residual, sigmas=range(1, 5), black_ridges=False)
@@ -131,9 +135,7 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
 
     # Edge detection + Hough for dominant angle
     edges = canny(ridge, sigma=2, low_threshold=0.1, high_threshold=0.3)
-    lines = probabilistic_hough_line(
-        edges, threshold=20, line_length=80, line_gap=15
-    )
+    lines = probabilistic_hough_line(edges, threshold=20, line_length=80, line_gap=15)
 
     if not lines:
         logger.warning("  No lines detected, falling back to site-to-site bearing")
@@ -145,8 +147,8 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
     angles = []
     weights = []
     for (x0, y0), (x1, y1) in lines:
-        length = np.sqrt((x1-x0)**2 + (y1-y0)**2)
-        angle = np.arctan2(y1-y0, x1-x0)
+        length = np.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+        angle = np.arctan2(y1 - y0, x1 - x0)
         angles.append(angle)
         weights.append(length)
 
@@ -156,8 +158,7 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
     weights = np.array(weights)
     double_angles = 2 * angles
     mean_double = np.arctan2(
-        np.sum(weights * np.sin(double_angles)),
-        np.sum(weights * np.cos(double_angles))
+        np.sum(weights * np.sin(double_angles)), np.sum(weights * np.cos(double_angles))
     )
     bearing_pixel = mean_double / 2  # back to single angle
 
@@ -175,6 +176,7 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
 # =========================================================================
 # Step 2: Generate corridor geometry (strip bounding boxes)
 # =========================================================================
+
 
 def generate_corridor_strips(
     origin_x: float,
@@ -199,8 +201,10 @@ def generate_corridor_strips(
     # Load tile index to find county bounds
     tiles = gpd.read_file(tile_index_path)
     county_bounds = tiles.total_bounds  # (x_min, y_min, x_max, y_max)
-    logger.info(f"  County bounds: X=[{county_bounds[0]:.0f}, {county_bounds[2]:.0f}], "
-                f"Y=[{county_bounds[1]:.0f}, {county_bounds[3]:.0f}]")
+    logger.info(
+        f"  County bounds: X=[{county_bounds[0]:.0f}, {county_bounds[2]:.0f}], "
+        f"Y=[{county_bounds[1]:.0f}, {county_bounds[3]:.0f}]"
+    )
 
     # Direction vectors
     dx = np.cos(bearing)
@@ -214,7 +218,7 @@ def generate_corridor_strips(
 
     strips = []
 
-    for direction_sign, direction_name in [(1, 'forward'), (-1, 'backward')]:
+    for direction_sign, direction_name in [(1, "forward"), (-1, "backward")]:
         for i in range(max_strips_per_dir):
             dist = (i + 0.5) * step * direction_sign
             cx = origin_x + dx * dist
@@ -223,12 +227,18 @@ def generate_corridor_strips(
             # Four corners of the rotated strip
             half_len = STRIP_LENGTH / 2
             corners = []
-            for sl, sw in [(-half_len, -half_w), (-half_len, half_w),
-                           (half_len, -half_w), (half_len, half_w)]:
-                corners.append((
-                    cx + dx * sl + px * sw,
-                    cy + dy * sl + py * sw,
-                ))
+            for sl, sw in [
+                (-half_len, -half_w),
+                (-half_len, half_w),
+                (half_len, -half_w),
+                (half_len, half_w),
+            ]:
+                corners.append(
+                    (
+                        cx + dx * sl + px * sw,
+                        cy + dy * sl + py * sw,
+                    )
+                )
 
             xs = [c[0] for c in corners]
             ys = [c[1] for c in corners]
@@ -237,8 +247,12 @@ def generate_corridor_strips(
 
             # Check if strip center is within county bounds (with margin)
             margin = 2000
-            if (cx < county_bounds[0] + margin or cx > county_bounds[2] - margin or
-                cy < county_bounds[1] + margin or cy > county_bounds[3] - margin):
+            if (
+                cx < county_bounds[0] + margin
+                or cx > county_bounds[2] - margin
+                or cy < county_bounds[1] + margin
+                or cy > county_bounds[3] - margin
+            ):
                 logger.info(f"  {direction_name} strip {i}: outside county bounds, stopping")
                 break
 
@@ -249,18 +263,20 @@ def generate_corridor_strips(
                 logger.info(f"  {direction_name} strip {i}: no tiles, stopping")
                 break
 
-            strips.append({
-                'strip_id': len(strips),
-                'direction': direction_name,
-                'dir_index': i,
-                'center_x': cx,
-                'center_y': cy,
-                'x_min': x_min,
-                'x_max': x_max,
-                'y_min': y_min,
-                'y_max': y_max,
-                'n_tiles': len(matching),
-            })
+            strips.append(
+                {
+                    "strip_id": len(strips),
+                    "direction": direction_name,
+                    "dir_index": i,
+                    "center_x": cx,
+                    "center_y": cy,
+                    "x_min": x_min,
+                    "x_max": x_max,
+                    "y_min": y_min,
+                    "y_max": y_max,
+                    "n_tiles": len(matching),
+                }
+            )
 
     logger.info(f"  Generated {len(strips)} corridor strips")
     return strips
@@ -269,6 +285,7 @@ def generate_corridor_strips(
 # =========================================================================
 # Step 3: Generate strip DEM from LAS tiles
 # =========================================================================
+
 
 def generate_strip_dem(
     strip: dict, tile_gdf: gpd.GeoDataFrame, lidar_dir: Path = None
@@ -282,10 +299,10 @@ def generate_strip_dem(
     """
     import laspy
 
-    x_min = strip['x_min']
-    x_max = strip['x_max']
-    y_min = strip['y_min']
-    y_max = strip['y_max']
+    x_min = strip["x_min"]
+    x_max = strip["x_max"]
+    y_min = strip["y_min"]
+    y_max = strip["y_max"]
 
     strip_box = box(x_min, y_min, x_max, y_max)
     matching = tile_gdf[tile_gdf.intersects(strip_box)]
@@ -293,14 +310,14 @@ def generate_strip_dem(
     # Load ground points
     all_px, all_py, all_pz = [], [], []
     for _, row in matching.iterrows():
-        tile_name = row['TileName']
-        las_path = lidar_dir / f'{tile_name}.las'
+        tile_name = row["TileName"]
+        las_path = lidar_dir / f"{tile_name}.las"
         if not las_path.exists():
             continue
 
         las = laspy.read(las_path)
 
-        if hasattr(las, 'classification'):
+        if hasattr(las, "classification"):
             mask = las.classification == 2
             if mask.sum() == 0:
                 mask = np.ones(len(las.x), dtype=bool)
@@ -326,11 +343,11 @@ def generate_strip_dem(
     yi = np.arange(y_min, y_max, RESOLUTION)
     Xi, Yi = np.meshgrid(xi, yi)
 
-    Zi = griddata((px, py), pz, (Xi, Yi), method='linear')
+    Zi = griddata((px, py), pz, (Xi, Yi), method="linear")
 
     nan_count = np.isnan(Zi).sum()
     if nan_count > 0:
-        Zi_nearest = griddata((px, py), pz, (Xi, Yi), method='nearest')
+        Zi_nearest = griddata((px, py), pz, (Xi, Yi), method="nearest")
         Zi = np.where(np.isnan(Zi), Zi_nearest, Zi)
 
     return Zi, xi, yi
@@ -339,6 +356,7 @@ def generate_strip_dem(
 # =========================================================================
 # Step 4: Compute residuals for one strip
 # =========================================================================
+
 
 def compute_strip_residuals(dem: np.ndarray) -> dict:
     """
@@ -363,6 +381,7 @@ def compute_strip_residuals(dem: np.ndarray) -> dict:
 # =========================================================================
 # Step 5: Compute confidence heatmap for one strip
 # =========================================================================
+
 
 def compute_strip_confidence(
     dem: np.ndarray,
@@ -432,6 +451,7 @@ def compute_strip_confidence(
 # Step 6: Write a GeoTIFF for one strip
 # =========================================================================
 
+
 def write_strip_geotiff(
     data: np.ndarray,
     x_min: float,
@@ -448,25 +468,26 @@ def write_strip_geotiff(
     data_out = np.flipud(data).astype(np.float32)
 
     profile = {
-        'driver': 'GTiff',
-        'height': data_out.shape[0],
-        'width': data_out.shape[1],
-        'count': 1,
-        'dtype': 'float32',
-        'crs': CRS,
-        'transform': transform,
-        'compress': 'lzw',
+        "driver": "GTiff",
+        "height": data_out.shape[0],
+        "width": data_out.shape[1],
+        "count": 1,
+        "dtype": "float32",
+        "crs": CRS,
+        "transform": transform,
+        "compress": "lzw",
     }
     if nodata is not None:
-        profile['nodata'] = nodata
+        profile["nodata"] = nodata
 
-    with rasterio.open(output_path, 'w', **profile) as dst:
+    with rasterio.open(output_path, "w", **profile) as dst:
         dst.write(data_out, 1)
 
 
 # =========================================================================
 # Step 7: Trace centerline from stitched confidence heatmap
 # =========================================================================
+
 
 def trace_centerline(
     confidence_tif: Path,
@@ -478,7 +499,7 @@ def trace_centerline(
     Returns:
         List of (x, y, confidence) tuples in State Plane coordinates.
     """
-    from skimage.morphology import skeletonize, remove_small_objects
+    from skimage.morphology import remove_small_objects, skeletonize
     from skimage.transform import probabilistic_hough_line
 
     logger.info("Step 7: Tracing road centerline ...")
@@ -501,9 +522,7 @@ def trace_centerline(
     logger.info(f"  Skeleton pixels: {skeleton.sum()}")
 
     # Use probabilistic Hough to find line segments
-    lines = probabilistic_hough_line(
-        skeleton, threshold=10, line_length=30, line_gap=20
-    )
+    lines = probabilistic_hough_line(skeleton, threshold=10, line_length=30, line_gap=20)
     logger.info(f"  Hough line segments: {len(lines)}")
 
     if not lines:
@@ -519,7 +538,7 @@ def trace_centerline(
     # Collect all line segment endpoints + midpoints
     points = []
     for (x0, y0), (x1, y1) in lines:
-        for px_x, px_y in [(x0, y0), (x1, y1), ((x0+x1)//2, (y0+y1)//2)]:
+        for px_x, px_y in [(x0, y0), (x1, y1), ((x0 + x1) // 2, (y0 + y1) // 2)]:
             if 0 <= px_y < conf.shape[0] and 0 <= px_x < conf.shape[1]:
                 sp_x, sp_y = rasterio.transform.xy(transform, px_y, px_x)
                 c = conf[px_y, px_x]
@@ -555,6 +574,7 @@ def trace_centerline(
 # Step 8: Export GeoJSON
 # =========================================================================
 
+
 def export_geojson(points: list, output_path: Path):
     """Export centerline points as a GeoJSON LineString with confidence."""
     if len(points) < 2:
@@ -565,46 +585,46 @@ def export_geojson(points: list, output_path: Path):
     confidences = [p[2] for p in points]
 
     # Also compute WGS84 coordinates for convenience
-    t = Transformer.from_crs(CRS, 'EPSG:4326', always_xy=True)
+    t = Transformer.from_crs(CRS, "EPSG:4326", always_xy=True)
     coords_wgs84 = [t.transform(x, y) for x, y in coords]
 
     feature = {
-        'type': 'FeatureCollection',
-        'crs': {
-            'type': 'name',
-            'properties': {'name': CRS},
+        "type": "FeatureCollection",
+        "crs": {
+            "type": "name",
+            "properties": {"name": CRS},
         },
-        'features': [
+        "features": [
             {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': coords,
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": coords,
                 },
-                'properties': {
-                    'name': 'Great Hopewell Road (detected)',
-                    'method': 'RESIDUALS multi-method consensus',
-                    'mean_confidence': float(np.mean(confidences)),
-                    'n_points': len(points),
-                    'crs': CRS,
+                "properties": {
+                    "name": "Great Hopewell Road (detected)",
+                    "method": "RESIDUALS multi-method consensus",
+                    "mean_confidence": float(np.mean(confidences)),
+                    "n_points": len(points),
+                    "crs": CRS,
                 },
             },
             {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': [(lon, lat) for lon, lat in coords_wgs84],
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [(lon, lat) for lon, lat in coords_wgs84],
                 },
-                'properties': {
-                    'name': 'Great Hopewell Road (detected) - WGS84',
-                    'crs': 'EPSG:4326',
+                "properties": {
+                    "name": "Great Hopewell Road (detected) - WGS84",
+                    "crs": "EPSG:4326",
                 },
             },
         ],
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         json.dump(feature, f, indent=2)
     logger.info(f"  Saved GeoJSON: {output_path}")
 
@@ -612,6 +632,7 @@ def export_geojson(points: list, output_path: Path):
 # =========================================================================
 # Step 9: Merge strip GeoTIFFs into one corridor raster
 # =========================================================================
+
 
 def merge_strip_tiffs(strip_dir: Path, pattern: str, output_path: Path):
     """Merge all strip GeoTIFFs matching pattern into one corridor raster."""
@@ -627,15 +648,17 @@ def merge_strip_tiffs(strip_dir: Path, pattern: str, output_path: Path):
         mosaic, out_transform = rasterio_merge(src_files)
 
         profile = src_files[0].profile.copy()
-        profile.update({
-            'height': mosaic.shape[1],
-            'width': mosaic.shape[2],
-            'transform': out_transform,
-            'compress': 'lzw',
-        })
+        profile.update(
+            {
+                "height": mosaic.shape[1],
+                "width": mosaic.shape[2],
+                "transform": out_transform,
+                "compress": "lzw",
+            }
+        )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with rasterio.open(output_path, 'w', **profile) as dst:
+        with rasterio.open(output_path, "w", **profile) as dst:
             dst.write(mosaic)
 
         size_mb = output_path.stat().st_size / (1024 * 1024)
@@ -648,6 +671,7 @@ def merge_strip_tiffs(strip_dir: Path, pattern: str, output_path: Path):
 # =========================================================================
 # Step 10: Generate summary figure
 # =========================================================================
+
 
 def generate_summary_figure(
     confidence_tif: Path,
@@ -665,7 +689,6 @@ def generate_summary_figure(
 
     with rasterio.open(confidence_tif) as src:
         conf = src.read(1)
-        transform = src.transform
         bounds = src.bounds
 
     # Downsample if the raster is huge (target ~4000px on the long side)
@@ -681,45 +704,52 @@ def generate_summary_figure(
     # Left: confidence heatmap
     ax = axes[0]
     extent = [bounds.left, bounds.right, bounds.bottom, bounds.top]
-    im = ax.imshow(conf, cmap='hot', extent=extent, aspect='equal',
-                   origin='upper', vmin=0, vmax=1)
-    ax.set_title('Multi-Method Confidence Heatmap', fontsize=12, fontweight='bold')
-    ax.set_xlabel('State Plane X (ft)')
-    ax.set_ylabel('State Plane Y (ft)')
-    plt.colorbar(im, ax=ax, label='Confidence', fraction=0.046, pad=0.04)
+    im = ax.imshow(conf, cmap="hot", extent=extent, aspect="equal", origin="upper", vmin=0, vmax=1)
+    ax.set_title("Multi-Method Confidence Heatmap", fontsize=12, fontweight="bold")
+    ax.set_xlabel("State Plane X (ft)")
+    ax.set_ylabel("State Plane Y (ft)")
+    plt.colorbar(im, ax=ax, label="Confidence", fraction=0.046, pad=0.04)
 
     # Mark known sites
-    ax.plot(HR_X, HR_Y, 'c^', markersize=12, label='Hopewell Road segment')
-    ax.plot(GC_X, GC_Y, 'gs', markersize=12, label='Great Circle')
-    ax.legend(fontsize=9, loc='upper left')
+    ax.plot(HR_X, HR_Y, "c^", markersize=12, label="Hopewell Road segment")
+    ax.plot(GC_X, GC_Y, "gs", markersize=12, label="Great Circle")
+    ax.legend(fontsize=9, loc="upper left")
 
     # Right: confidence + centerline
     ax = axes[1]
-    ax.imshow(conf, cmap='gray_r', extent=extent, aspect='equal',
-              origin='upper', vmin=0, vmax=1, alpha=0.7)
+    ax.imshow(
+        conf,
+        cmap="gray_r",
+        extent=extent,
+        aspect="equal",
+        origin="upper",
+        vmin=0,
+        vmax=1,
+        alpha=0.7,
+    )
 
     if len(centerline_points) > 1:
         cl_x = [p[0] for p in centerline_points]
         cl_y = [p[1] for p in centerline_points]
         cl_c = [p[2] for p in centerline_points]
-        sc = ax.scatter(cl_x, cl_y, c=cl_c, cmap='RdYlGn', s=3,
-                        vmin=0, vmax=1, zorder=5)
-        plt.colorbar(sc, ax=ax, label='Centerline confidence', fraction=0.046, pad=0.04)
+        sc = ax.scatter(cl_x, cl_y, c=cl_c, cmap="RdYlGn", s=3, vmin=0, vmax=1, zorder=5)
+        plt.colorbar(sc, ax=ax, label="Centerline confidence", fraction=0.046, pad=0.04)
 
-    ax.plot(HR_X, HR_Y, 'c^', markersize=12, label='Hopewell Road')
-    ax.plot(GC_X, GC_Y, 'gs', markersize=12, label='Great Circle')
-    ax.set_title('Detected Road Centerline', fontsize=12, fontweight='bold')
-    ax.set_xlabel('State Plane X (ft)')
-    ax.set_ylabel('State Plane Y (ft)')
-    ax.legend(fontsize=9, loc='upper left')
+    ax.plot(HR_X, HR_Y, "c^", markersize=12, label="Hopewell Road")
+    ax.plot(GC_X, GC_Y, "gs", markersize=12, label="Great Circle")
+    ax.set_title("Detected Road Centerline", fontsize=12, fontweight="bold")
+    ax.set_xlabel("State Plane X (ft)")
+    ax.set_ylabel("State Plane Y (ft)")
+    ax.legend(fontsize=9, loc="upper left")
 
     fig.suptitle(
-        'RESIDUALS: Great Hopewell Road Corridor Trace\n'
-        'Multi-method residual analysis of Licking County LiDAR',
-        fontsize=13, fontweight='bold',
+        "RESIDUALS: Great Hopewell Road Corridor Trace\n"
+        "Multi-method residual analysis of Licking County LiDAR",
+        fontsize=13,
+        fontweight="bold",
     )
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close()
     logger.info(f"  Summary figure: {output_path}")
 
@@ -728,29 +758,49 @@ def generate_summary_figure(
 # Main pipeline
 # =========================================================================
 
+
 def main():
     parser = argparse.ArgumentParser(
-        description='RESIDUALS: Great Hopewell Road Corridor Trace',
+        description="RESIDUALS: Great Hopewell Road Corridor Trace",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('--max-strips', type=int, default=50,
-                        help='Max strips per direction (default: 50)')
-    parser.add_argument('--skip-dem-gen', action='store_true',
-                        help='Skip DEM generation (reuse existing strip files)')
-    parser.add_argument('--threshold', type=float, default=0.3,
-                        help='Confidence threshold for centerline (default: 0.3)')
-    parser.add_argument('--bearing', type=float, default=None,
-                        help='Manual bearing override (degrees from +X axis, CCW positive)')
-    parser.add_argument('--output', type=str, default=str(OUTPUT_DIR),
-                        help=f'Output directory (default: {OUTPUT_DIR})')
-    parser.add_argument('--lidar-dir', type=str, default=None,
-                        help='LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)')
-    parser.add_argument('--tile-index', type=str, default=None,
-                        help='Path to tile index shapefile')
+    parser.add_argument(
+        "--max-strips", type=int, default=50, help="Max strips per direction (default: 50)"
+    )
+    parser.add_argument(
+        "--skip-dem-gen",
+        action="store_true",
+        help="Skip DEM generation (reuse existing strip files)",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.3,
+        help="Confidence threshold for centerline (default: 0.3)",
+    )
+    parser.add_argument(
+        "--bearing",
+        type=float,
+        default=None,
+        help="Manual bearing override (degrees from +X axis, CCW positive)",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=str(OUTPUT_DIR),
+        help=f"Output directory (default: {OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--lidar-dir",
+        type=str,
+        default=None,
+        help="LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)",
+    )
+    parser.add_argument("--tile-index", type=str, default=None, help="Path to tile index shapefile")
     args = parser.parse_args()
 
     output_dir = Path(args.output)
-    strip_dir = output_dir / 'strips'
+    strip_dir = output_dir / "strips"
     strip_dir.mkdir(parents=True, exist_ok=True)
 
     start_time = datetime.now()
@@ -759,7 +809,7 @@ def main():
     logger.info("=" * 70)
 
     # Import decomposition methods (triggers registration)
-    import src.decomposition.methods           # noqa: F401
+    import src.decomposition.methods  # noqa: F401
     import src.decomposition.methods_extended  # noqa: F401
 
     # ---- Step 1: Determine bearing ----
@@ -782,8 +832,10 @@ def main():
 
     # Resolve LiDAR paths (needed for corridor geometry and DEM generation)
     LIDAR_DIR = _resolve_lidar_dir(args.lidar_dir)
-    TILE_INDEX = Path(args.tile_index) if args.tile_index else (
-        LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
+    TILE_INDEX = (
+        Path(args.tile_index)
+        if args.tile_index
+        else (LIDAR_DIR / "_LIC_1250_Tile_Index" / "Tile_Index.shp")
     )
 
     # ---- Step 2: Generate corridor geometry ----
@@ -793,7 +845,10 @@ def main():
     logger.info(f"Corridor origin: ({origin_x:.0f}, {origin_y:.0f})")
 
     strips = generate_corridor_strips(
-        origin_x, origin_y, bearing, args.max_strips,
+        origin_x,
+        origin_y,
+        bearing,
+        args.max_strips,
         tile_index_path=TILE_INDEX,
     )
 
@@ -808,19 +863,22 @@ def main():
 
         total_strips = len(strips)
         for i, strip in enumerate(strips):
-            sid = strip['strip_id']
-            logger.info(f"\n--- Strip {sid} ({i+1}/{total_strips}) "
-                        f"[{strip['direction']} #{strip['dir_index']}] "
-                        f"center=({strip['center_x']:.0f}, {strip['center_y']:.0f}) "
-                        f"tiles={strip['n_tiles']} ---")
+            sid = strip["strip_id"]
+            logger.info(
+                f"\n--- Strip {sid} ({i + 1}/{total_strips}) "
+                f"[{strip['direction']} #{strip['dir_index']}] "
+                f"center=({strip['center_x']:.0f}, {strip['center_y']:.0f}) "
+                f"tiles={strip['n_tiles']} ---"
+            )
 
-            conf_path = strip_dir / f'strip_{sid:03d}_confidence.tif'
-            tophat_path = strip_dir / f'strip_{sid:03d}_tophat.tif'
+            conf_path = strip_dir / f"strip_{sid:03d}_confidence.tif"
+            strip_dir / f"strip_{sid:03d}_tophat.tif"
 
             # Check if all outputs already exist
-            dem_cache = strip_dir / f'strip_{sid:03d}_dem.npy'
-            all_method_tifs = [strip_dir / f'strip_{sid:03d}_{name}.tif'
-                               for name, _ in RESIDUAL_METHODS]
+            dem_cache = strip_dir / f"strip_{sid:03d}_dem.npy"
+            all_method_tifs = [
+                strip_dir / f"strip_{sid:03d}_{name}.tif" for name, _ in RESIDUAL_METHODS
+            ]
             if conf_path.exists() and all(f.exists() for f in all_method_tifs):
                 logger.info("  Already processed, skipping")
                 continue
@@ -837,8 +895,10 @@ def main():
                     continue
                 np.save(dem_cache, dem)
             t_dem = time.time() - t0
-            logger.info(f"  DEM: {dem.shape} ({dem.size:,} px) in {t_dem:.1f}s, "
-                        f"elev=[{dem.min():.0f}, {dem.max():.0f}]")
+            logger.info(
+                f"  DEM: {dem.shape} ({dem.size:,} px) in {t_dem:.1f}s, "
+                f"elev=[{dem.min():.0f}, {dem.max():.0f}]"
+            )
 
             # Step 4: Compute residuals
             t0 = time.time()
@@ -859,17 +919,21 @@ def main():
             # Write strip GeoTIFFs -- confidence + each method individually
             write_strip_geotiff(
                 confidence,
-                strip['x_min'], strip['x_max'],
-                strip['y_min'], strip['y_max'],
+                strip["x_min"],
+                strip["x_max"],
+                strip["y_min"],
+                strip["y_max"],
                 conf_path,
             )
 
             for method_name, residual in residuals.items():
-                method_path = strip_dir / f'strip_{sid:03d}_{method_name}.tif'
+                method_path = strip_dir / f"strip_{sid:03d}_{method_name}.tif"
                 write_strip_geotiff(
                     residual,
-                    strip['x_min'], strip['x_max'],
-                    strip['y_min'], strip['y_max'],
+                    strip["x_min"],
+                    strip["x_max"],
+                    strip["y_min"],
+                    strip["y_max"],
                     method_path,
                 )
 
@@ -882,15 +946,13 @@ def main():
     logger.info("Merging corridor rasters ...")
     logger.info("=" * 70)
 
-    conf_merged = output_dir / 'corridor_confidence.tif'
-    merge_strip_tiffs(strip_dir, 'strip_*_confidence.tif', conf_merged)
+    conf_merged = output_dir / "corridor_confidence.tif"
+    merge_strip_tiffs(strip_dir, "strip_*_confidence.tif", conf_merged)
 
     # Merge each individual method into its own corridor GeoTIFF
     for method_name, _ in RESIDUAL_METHODS:
-        method_merged = output_dir / f'corridor_residual_{method_name}.tif'
-        merge_strip_tiffs(
-            strip_dir, f'strip_*_{method_name}.tif', method_merged
-        )
+        method_merged = output_dir / f"corridor_residual_{method_name}.tif"
+        merge_strip_tiffs(strip_dir, f"strip_*_{method_name}.tif", method_merged)
 
     # ---- Step 7: Trace centerline ----
     logger.info("\n" + "=" * 70)
@@ -902,26 +964,26 @@ def main():
         centerline_points = trace_centerline(conf_merged, args.threshold)
 
     # ---- Step 8: Export GeoJSON ----
-    geojson_path = output_dir / 'road_centerline.geojson'
+    geojson_path = output_dir / "road_centerline.geojson"
     export_geojson(centerline_points, geojson_path)
 
     # ---- Save metadata (before figure, which can OOM on large corridors) ----
     meta = {
-        'bearing_degrees': float(bearing_deg),
-        'corridor_width_ft': CORRIDOR_WIDTH,
-        'strip_length_ft': STRIP_LENGTH,
-        'resolution_ft': RESOLUTION,
-        'n_strips': len(strips),
-        'threshold': args.threshold,
-        'methods': [{'name': n, 'params': p} for n, p in RESIDUAL_METHODS],
-        'elapsed_seconds': (datetime.now() - start_time).total_seconds(),
-        'known_sites': {
-            'hopewell_road': {'x': HR_X, 'y': HR_Y},
-            'great_circle': {'x': GC_X, 'y': GC_Y},
+        "bearing_degrees": float(bearing_deg),
+        "corridor_width_ft": CORRIDOR_WIDTH,
+        "strip_length_ft": STRIP_LENGTH,
+        "resolution_ft": RESOLUTION,
+        "n_strips": len(strips),
+        "threshold": args.threshold,
+        "methods": [{"name": n, "params": p} for n, p in RESIDUAL_METHODS],
+        "elapsed_seconds": (datetime.now() - start_time).total_seconds(),
+        "known_sites": {
+            "hopewell_road": {"x": HR_X, "y": HR_Y},
+            "great_circle": {"x": GC_X, "y": GC_Y},
         },
-        'centerline_points': len(centerline_points),
+        "centerline_points": len(centerline_points),
     }
-    with open(output_dir / 'metadata.json', 'w') as f:
+    with open(output_dir / "metadata.json", "w") as f:
         json.dump(meta, f, indent=2)
 
     # ---- Step 9: Summary figure ----
@@ -929,7 +991,7 @@ def main():
         generate_summary_figure(
             conf_merged,
             centerline_points,
-            output_dir / 'corridor_overview.png',
+            output_dir / "corridor_overview.png",
         )
 
     elapsed = datetime.now() - start_time
@@ -943,5 +1005,5 @@ def main():
     logger.info("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

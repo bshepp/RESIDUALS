@@ -14,7 +14,6 @@ import pytest
 from src.upsampling.registry import (
     UPSAMPLING_REGISTRY,
     run_upsampling,
-    list_upsamplings,
 )
 
 
@@ -59,10 +58,18 @@ class TestAllUpsamplingMethodsRun:
 class TestUpsamplingOutputShape:
     """Output dimensions should match scale factor."""
 
-    @pytest.mark.parametrize("method_name", [
-        "bicubic", "lanczos", "bspline", "fft_zeropad",
-        "nearest", "bilinear", "quadratic",
-    ])
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "bicubic",
+            "lanczos",
+            "bspline",
+            "fft_zeropad",
+            "nearest",
+            "bilinear",
+            "quadratic",
+        ],
+    )
     def test_2x_scale_doubles_dimensions(self, tiny_dem, method_name):
         result = run_upsampling(method_name, tiny_dem, scale=2)
         expected_h = tiny_dem.shape[0] * 2
@@ -77,8 +84,7 @@ class TestUpsamplingKnownAnswers:
 
     def test_nearest_neighbor_block_pattern(self):
         """Nearest-neighbor 2x should produce 2x2 blocks."""
-        dem = np.array([[1.0, 2.0],
-                        [3.0, 4.0]])
+        dem = np.array([[1.0, 2.0], [3.0, 4.0]])
         result = run_upsampling("nearest", dem, scale=2)
 
         assert result.shape == (4, 4)

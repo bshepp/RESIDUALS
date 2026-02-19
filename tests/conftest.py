@@ -2,9 +2,10 @@
 Shared test fixtures for RESIDUALS test suite.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
-from pathlib import Path
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def small_dem():
 
     # Add a Gaussian bump (local feature)
     y, x = np.ogrid[:h, :w]
-    bump = 10.0 * np.exp(-((x - 32) ** 2 + (y - 32) ** 2) / (2 * 8 ** 2))
+    bump = 10.0 * np.exp(-((x - 32) ** 2 + (y - 32) ** 2) / (2 * 8**2))
     dem += bump
 
     return dem

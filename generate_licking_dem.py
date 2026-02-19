@@ -8,45 +8,46 @@ Outputs:
     data/test_dems/licking_hopewell_2.5ft.json   (metadata)
 """
 
-import numpy as np
 import json
+import logging
 import os
 import sys
 from pathlib import Path
-from pyproj import Transformer
-import geopandas as gpd
-from shapely.geometry import box
-import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+import geopandas as gpd
+import numpy as np
+from pyproj import Transformer
+from shapely.geometry import box
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Archaeological site coordinates (WGS84)
 # ---------------------------------------------------------------------------
 SITES = {
-    'hopewell_road': {
-        'lat': 40.02818536392136,
-        'lon': -82.45905475647373,
-        'description': 'Great Hopewell Road segment',
+    "hopewell_road": {
+        "lat": 40.02818536392136,
+        "lon": -82.45905475647373,
+        "description": "Great Hopewell Road segment",
     },
-    'great_circle': {
-        'lat': 40.04139440223933,
-        'lon': -82.43111687044818,
-        'description': 'Great Circle Earthworks (Newark Earthworks)',
+    "great_circle": {
+        "lat": 40.04139440223933,
+        "lon": -82.43111687044818,
+        "description": "Great Circle Earthworks (Newark Earthworks)",
     },
 }
 
-OUTPUT_NPY = Path('data/test_dems/licking_hopewell_2.5ft.npy')
-OUTPUT_JSON = Path('data/test_dems/licking_hopewell_2.5ft.json')
+OUTPUT_NPY = Path("data/test_dems/licking_hopewell_2.5ft.npy")
+OUTPUT_JSON = Path("data/test_dems/licking_hopewell_2.5ft.json")
 
-RESOLUTION = 2.5   # feet per pixel
-MARGIN = 2000       # feet of padding around sites
+RESOLUTION = 2.5  # feet per pixel
+MARGIN = 2000  # feet of padding around sites
 
 
 def _resolve_lidar_dir(cli_arg=None):
     """Resolve LiDAR directory from CLI arg, env var, or fail."""
-    candidates = [cli_arg, os.environ.get('RESIDUALS_LIDAR_DIR')]
+    candidates = [cli_arg, os.environ.get("RESIDUALS_LIDAR_DIR")]
     for raw in candidates:
         if raw:
             p = Path(raw)
@@ -59,33 +60,40 @@ def _resolve_lidar_dir(cli_arg=None):
 
 def main():
     import argparse
+
     import laspy
     from scipy.interpolate import griddata
 
     parser = argparse.ArgumentParser(
-        description='Generate Licking County Hopewell sites DEM from LiDAR')
-    parser.add_argument('--lidar-dir', type=str, default=None,
-                        help='LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)')
-    parser.add_argument('--tile-index', type=str, default=None,
-                        help='Path to tile index shapefile')
+        description="Generate Licking County Hopewell sites DEM from LiDAR"
+    )
+    parser.add_argument(
+        "--lidar-dir",
+        type=str,
+        default=None,
+        help="LiDAR tile directory (or set RESIDUALS_LIDAR_DIR)",
+    )
+    parser.add_argument("--tile-index", type=str, default=None, help="Path to tile index shapefile")
     args = parser.parse_args()
 
     LIDAR_DIR = _resolve_lidar_dir(args.lidar_dir)
-    TILE_INDEX = Path(args.tile_index) if args.tile_index else (
-        LIDAR_DIR / '_LIC_1250_Tile_Index' / 'Tile_Index.shp'
+    TILE_INDEX = (
+        Path(args.tile_index)
+        if args.tile_index
+        else (LIDAR_DIR / "_LIC_1250_Tile_Index" / "Tile_Index.shp")
     )
 
     # --- Convert site coords to State Plane --------------------------------
-    transformer = Transformer.from_crs('EPSG:4326', 'EPSG:3735', always_xy=True)
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:3735", always_xy=True)
     site_coords_sp = {}
     for name, info in SITES.items():
-        x, y = transformer.transform(info['lon'], info['lat'])
-        site_coords_sp[name] = {'x': x, 'y': y}
+        x, y = transformer.transform(info["lon"], info["lat"])
+        site_coords_sp[name] = {"x": x, "y": y}
         logger.info(f"{info['description']}: X={x:.0f}, Y={y:.0f}")
 
     # --- Compute bounding box ----------------------------------------------
-    all_x = [c['x'] for c in site_coords_sp.values()]
-    all_y = [c['y'] for c in site_coords_sp.values()]
+    all_x = [c["x"] for c in site_coords_sp.values()]
+    all_y = [c["y"] for c in site_coords_sp.values()]
     x_min = min(all_x) - MARGIN
     x_max = max(all_x) + MARGIN
     y_min = min(all_y) - MARGIN
@@ -107,8 +115,8 @@ def main():
     # --- Load LAS points ---------------------------------------------------
     all_px, all_py, all_pz = [], [], []
     for _, row in matching.iterrows():
-        tile_name = row['TileName']
-        las_path = LIDAR_DIR / f'{tile_name}.las'
+        tile_name = row["TileName"]
+        las_path = LIDAR_DIR / f"{tile_name}.las"
         if not las_path.exists():
             logger.warning(f"  Missing: {las_path}")
             continue
@@ -117,7 +125,7 @@ def main():
         las = laspy.read(las_path)
 
         # Filter to ground points (classification 2)
-        if hasattr(las, 'classification'):
+        if hasattr(las, "classification"):
             mask = las.classification == 2
             if mask.sum() == 0:
                 mask = np.ones(len(las.x), dtype=bool)
@@ -148,12 +156,12 @@ def main():
     logger.info(f"Resolution: {RESOLUTION} ft/pixel")
 
     logger.info("Interpolating (this may take a few minutes) ...")
-    Zi = griddata((px, py), pz, (Xi, Yi), method='linear')
+    Zi = griddata((px, py), pz, (Xi, Yi), method="linear")
 
     nan_count = np.isnan(Zi).sum()
     if nan_count > 0:
         logger.info(f"Filling {nan_count} NaN values with nearest neighbor ...")
-        Zi_nearest = griddata((px, py), pz, (Xi, Yi), method='nearest')
+        Zi_nearest = griddata((px, py), pz, (Xi, Yi), method="nearest")
         Zi = np.where(np.isnan(Zi), Zi_nearest, Zi)
 
     # --- Save ---------------------------------------------------------------
@@ -163,33 +171,33 @@ def main():
 
     # Save metadata with site coordinates in pixel space
     meta = {
-        'resolution_ft': RESOLUTION,
-        'shape': list(Zi.shape),
-        'x_min': float(x_min),
-        'x_max': float(x_max),
-        'y_min': float(y_min),
-        'y_max': float(y_max),
-        'z_min': float(Zi.min()),
-        'z_max': float(Zi.max()),
-        'crs': 'EPSG:3735',
-        'sites': {},
-        'source_tiles': [row['TileName'] for _, row in matching.iterrows()],
+        "resolution_ft": RESOLUTION,
+        "shape": list(Zi.shape),
+        "x_min": float(x_min),
+        "x_max": float(x_max),
+        "y_min": float(y_min),
+        "y_max": float(y_max),
+        "z_min": float(Zi.min()),
+        "z_max": float(Zi.max()),
+        "crs": "EPSG:3735",
+        "sites": {},
+        "source_tiles": [row["TileName"] for _, row in matching.iterrows()],
     }
 
     for name, sp in site_coords_sp.items():
-        px_x = (sp['x'] - x_min) / RESOLUTION
-        px_y = (sp['y'] - y_min) / RESOLUTION
-        meta['sites'][name] = {
-            'description': SITES[name]['description'],
-            'lat': SITES[name]['lat'],
-            'lon': SITES[name]['lon'],
-            'state_plane_x': sp['x'],
-            'state_plane_y': sp['y'],
-            'pixel_x': float(px_x),
-            'pixel_y': float(px_y),
+        px_x = (sp["x"] - x_min) / RESOLUTION
+        px_y = (sp["y"] - y_min) / RESOLUTION
+        meta["sites"][name] = {
+            "description": SITES[name]["description"],
+            "lat": SITES[name]["lat"],
+            "lon": SITES[name]["lon"],
+            "state_plane_x": sp["x"],
+            "state_plane_y": sp["y"],
+            "pixel_x": float(px_x),
+            "pixel_y": float(px_y),
         }
 
-    with open(OUTPUT_JSON, 'w') as f:
+    with open(OUTPUT_JSON, "w") as f:
         json.dump(meta, f, indent=2)
     logger.info(f"Saved metadata: {OUTPUT_JSON}")
 
@@ -197,5 +205,5 @@ def main():
     logger.info(f"Elevation range: {Zi.min():.1f} - {Zi.max():.1f} ft")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

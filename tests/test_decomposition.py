@@ -15,7 +15,6 @@ import pytest
 from src.decomposition.registry import (
     DECOMPOSITION_REGISTRY,
     run_decomposition,
-    list_decompositions,
 )
 
 
@@ -56,8 +55,7 @@ class TestDecompositionProperties:
         trend, residual = run_decomposition("gaussian", small_dem)
         reconstructed = trend + residual
         np.testing.assert_allclose(
-            reconstructed, small_dem, atol=1e-10,
-            err_msg="Gaussian: trend + residual != original"
+            reconstructed, small_dem, atol=1e-10, err_msg="Gaussian: trend + residual != original"
         )
 
     def test_gaussian_flat_dem_near_zero_residual(self, flat_dem):
@@ -78,8 +76,10 @@ class TestDecompositionProperties:
         trend, residual = run_decomposition("wavelet_dwt", small_dem)
         reconstructed = trend + residual
         np.testing.assert_allclose(
-            reconstructed, small_dem, atol=0.1,
-            err_msg="Wavelet: trend + residual diverged from original"
+            reconstructed,
+            small_dem,
+            atol=0.1,
+            err_msg="Wavelet: trend + residual diverged from original",
         )
 
     def test_polynomial_removes_linear_trend(self):
@@ -88,20 +88,18 @@ class TestDecompositionProperties:
         x = np.arange(w)
         dem = np.tile(x, (h, 1)).astype(np.float64) * 2.0  # pure linear ramp
 
-        trend, residual = run_decomposition(
-            "polynomial", dem, params={"degree": 1}
-        )
+        trend, residual = run_decomposition("polynomial", dem, params={"degree": 1})
         # Residual should be near-zero for a pure linear surface
-        assert np.std(residual) < 0.1, (
-            f"Polynomial residual std too high: {np.std(residual)}"
-        )
+        assert np.std(residual) < 0.1, f"Polynomial residual std too high: {np.std(residual)}"
 
 
 class TestNaNHandling:
     """NaN inputs should produce NaN-free outputs."""
 
-    @pytest.mark.parametrize("method_name", ["gaussian", "bilateral", "wavelet_dwt",
-                                              "morphological", "tophat", "polynomial"])
+    @pytest.mark.parametrize(
+        "method_name",
+        ["gaussian", "bilateral", "wavelet_dwt", "morphological", "tophat", "polynomial"],
+    )
     def test_nan_input_produces_clean_output(self, nan_dem, method_name):
         trend, residual = run_decomposition(method_name, nan_dem)
         assert not np.any(np.isnan(trend)), f"{method_name}: trend has NaN from NaN input"

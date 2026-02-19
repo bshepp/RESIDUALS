@@ -11,27 +11,24 @@ This script is designed to:
 3. Create machine-readable and human-readable prior art documentation
 """
 
-import numpy as np
-from pathlib import Path
+import hashlib
+import json
 import logging
 import sys
-import json
-import hashlib
 from datetime import datetime
 from itertools import product
+from pathlib import Path
+
+import numpy as np
 from tqdm import tqdm
-import traceback
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('exhaustive_experiment.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("exhaustive_experiment.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
@@ -39,54 +36,51 @@ logger = logging.getLogger(__name__)
 def get_all_parameter_combinations():
     """
     Generate all parameter combinations for all methods.
-    
+
     Returns dict of:
         method_name: [list of param dicts]
     """
     from src.decomposition.registry import DECOMPOSITION_REGISTRY
     from src.upsampling.registry import UPSAMPLING_REGISTRY
-    
-    all_combos = {
-        'decomposition': {},
-        'upsampling': {}
-    }
-    
+
+    all_combos = {"decomposition": {}, "upsampling": {}}
+
     # Decomposition methods
     for name, method in DECOMPOSITION_REGISTRY.items():
         param_ranges = method.param_ranges
-        
+
         if not param_ranges:
             # No parameters, just default
-            all_combos['decomposition'][name] = [method.default_params.copy()]
+            all_combos["decomposition"][name] = [method.default_params.copy()]
         else:
             # Generate all combinations
             param_names = list(param_ranges.keys())
             param_values = [param_ranges[p] for p in param_names]
-            
+
             combinations = []
             for values in product(*param_values):
                 combo = dict(zip(param_names, values))
                 combinations.append(combo)
-            
-            all_combos['decomposition'][name] = combinations
-    
+
+            all_combos["decomposition"][name] = combinations
+
     # Upsampling methods
     for name, method in UPSAMPLING_REGISTRY.items():
         param_ranges = method.param_ranges
-        
+
         if not param_ranges:
-            all_combos['upsampling'][name] = [method.default_params.copy()]
+            all_combos["upsampling"][name] = [method.default_params.copy()]
         else:
             param_names = list(param_ranges.keys())
             param_values = [param_ranges[p] for p in param_names]
-            
+
             combinations = []
             for values in product(*param_values):
                 combo = dict(zip(param_names, values))
                 combinations.append(combo)
-            
-            all_combos['upsampling'][name] = combinations
-    
+
+            all_combos["upsampling"][name] = combinations
+
     return all_combos
 
 
@@ -98,19 +92,19 @@ def compute_result_hash(residual: np.ndarray) -> str:
 def compute_statistics(arr: np.ndarray) -> dict:
     """Compute comprehensive statistics for documentation."""
     return {
-        'min': float(np.min(arr)),
-        'max': float(np.max(arr)),
-        'mean': float(np.mean(arr)),
-        'std': float(np.std(arr)),
-        'median': float(np.median(arr)),
-        'q25': float(np.percentile(arr, 25)),
-        'q75': float(np.percentile(arr, 75)),
-        'iqr': float(np.percentile(arr, 75) - np.percentile(arr, 25)),
-        'skewness': float(compute_skewness(arr)),
-        'kurtosis': float(compute_kurtosis(arr)),
-        'energy': float(np.sum(arr ** 2)),
-        'entropy': float(compute_entropy(arr)),
-        'zero_crossings': int(count_zero_crossings(arr)),
+        "min": float(np.min(arr)),
+        "max": float(np.max(arr)),
+        "mean": float(np.mean(arr)),
+        "std": float(np.std(arr)),
+        "median": float(np.median(arr)),
+        "q25": float(np.percentile(arr, 25)),
+        "q75": float(np.percentile(arr, 75)),
+        "iqr": float(np.percentile(arr, 75) - np.percentile(arr, 25)),
+        "skewness": float(compute_skewness(arr)),
+        "kurtosis": float(compute_kurtosis(arr)),
+        "energy": float(np.sum(arr**2)),
+        "entropy": float(compute_entropy(arr)),
+        "zero_crossings": int(count_zero_crossings(arr)),
     }
 
 
@@ -150,14 +144,14 @@ def count_zero_crossings(arr):
 
 def run_exhaustive_experiment(
     dem_path: str,
-    output_dir: str = 'results/exhaustive',
+    output_dir: str = "results/exhaustive",
     max_decomp_combos: int = None,
     max_upsamp_combos: int = None,
-    skip_existing: bool = True
+    skip_existing: bool = True,
 ):
     """
     Run exhaustive parameter exploration.
-    
+
     Args:
         dem_path: Path to input DEM
         output_dir: Output directory
@@ -168,192 +162,190 @@ def run_exhaustive_experiment(
     from src.decomposition import get_decomposition
     from src.upsampling import get_upsampling
     from src.utils import load_dem
-    
+
     start_time = datetime.now()
-    timestamp = start_time.strftime('%Y%m%d_%H%M%S')
-    
+    timestamp = start_time.strftime("%Y%m%d_%H%M%S")
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create subdirectories
-    results_dir = output_dir / 'results'
-    docs_dir = output_dir / 'documentation'
+    results_dir = output_dir / "results"
+    docs_dir = output_dir / "documentation"
     results_dir.mkdir(exist_ok=True)
     docs_dir.mkdir(exist_ok=True)
-    
+
     # Load DEM
     logger.info(f"Loading DEM: {dem_path}")
     dem = load_dem(dem_path)
     logger.info(f"DEM shape: {dem.shape}, range: [{dem.min():.1f}, {dem.max():.1f}]")
-    
+
     # Get all parameter combinations
     all_combos = get_all_parameter_combinations()
-    
-    decomp_combos = all_combos['decomposition']
-    upsamp_combos = all_combos['upsampling']
-    
+
+    decomp_combos = all_combos["decomposition"]
+    upsamp_combos = all_combos["upsampling"]
+
     # Count total
     total_decomp = sum(len(v) for v in decomp_combos.values())
     total_upsamp = sum(len(v) for v in upsamp_combos.values())
     total_combinations = total_decomp * total_upsamp
-    
+
     logger.info(f"Decomposition methods: {len(decomp_combos)}")
     logger.info(f"Decomposition parameter combinations: {total_decomp}")
     logger.info(f"Upsampling methods: {len(upsamp_combos)}")
     logger.info(f"Upsampling parameter combinations: {total_upsamp}")
     logger.info(f"Total combinations: {total_combinations}")
-    
+
     # Master documentation
     master_doc = {
-        'run_timestamp': timestamp,
-        'dem_path': str(dem_path),
-        'dem_shape': dem.shape,
-        'dem_stats': compute_statistics(dem),
-        'total_combinations': total_combinations,
-        'decomposition_methods': {},
-        'upsampling_methods': {},
-        'results': []
+        "run_timestamp": timestamp,
+        "dem_path": str(dem_path),
+        "dem_shape": dem.shape,
+        "dem_stats": compute_statistics(dem),
+        "total_combinations": total_combinations,
+        "decomposition_methods": {},
+        "upsampling_methods": {},
+        "results": [],
     }
-    
+
     # Document all methods first (even before running)
     logger.info("\n" + "=" * 60)
     logger.info("DOCUMENTING ALL METHOD PARAMETER SPACES")
     logger.info("=" * 60)
-    
+
     from src.decomposition.registry import DECOMPOSITION_REGISTRY
     from src.upsampling.registry import UPSAMPLING_REGISTRY
-    
+
     for name, method in DECOMPOSITION_REGISTRY.items():
-        master_doc['decomposition_methods'][name] = {
-            'category': method.category,
-            'preserves': method.preserves,
-            'destroys': method.destroys,
-            'default_params': method.default_params,
-            'param_ranges': method.param_ranges,
-            'total_combinations': len(decomp_combos.get(name, []))
+        master_doc["decomposition_methods"][name] = {
+            "category": method.category,
+            "preserves": method.preserves,
+            "destroys": method.destroys,
+            "default_params": method.default_params,
+            "param_ranges": method.param_ranges,
+            "total_combinations": len(decomp_combos.get(name, [])),
         }
         logger.info(f"Decomposition '{name}': {len(decomp_combos.get(name, []))} combinations")
-    
+
     for name, method in UPSAMPLING_REGISTRY.items():
-        master_doc['upsampling_methods'][name] = {
-            'category': method.category,
-            'preserves': method.preserves,
-            'introduces': getattr(method, 'introduces', ''),
-            'default_params': method.default_params,
-            'param_ranges': method.param_ranges,
-            'total_combinations': len(upsamp_combos.get(name, []))
+        master_doc["upsampling_methods"][name] = {
+            "category": method.category,
+            "preserves": method.preserves,
+            "introduces": getattr(method, "introduces", ""),
+            "default_params": method.default_params,
+            "param_ranges": method.param_ranges,
+            "total_combinations": len(upsamp_combos.get(name, [])),
         }
         logger.info(f"Upsampling '{name}': {len(upsamp_combos.get(name, []))} combinations")
-    
+
     # Save method documentation (prior art for parameter spaces)
-    method_doc_path = docs_dir / f'method_parameters_{timestamp}.json'
-    with open(method_doc_path, 'w') as f:
+    method_doc_path = docs_dir / f"method_parameters_{timestamp}.json"
+    with open(method_doc_path, "w") as f:
         json.dump(master_doc, f, indent=2)
     logger.info(f"Saved method documentation: {method_doc_path}")
-    
+
     # Run all combinations
     logger.info("\n" + "=" * 60)
     logger.info("RUNNING EXHAUSTIVE PARAMETER EXPLORATION")
     logger.info("=" * 60)
-    
+
     completed = 0
     failed = 0
     skipped = 0
-    
+
     # Create progress bar
     pbar = tqdm(total=total_combinations, desc="Processing")
-    
+
     for decomp_name, decomp_param_list in decomp_combos.items():
         if max_decomp_combos:
             decomp_param_list = decomp_param_list[:max_decomp_combos]
-        
+
         decomp_method = get_decomposition(decomp_name)
         decomp_func = decomp_method.func
-        
+
         for decomp_params in decomp_param_list:
             # Create unique ID for this decomposition configuration
             decomp_id = f"{decomp_name}_" + "_".join(
                 f"{k}{v}" for k, v in sorted(decomp_params.items())
             )
-            
+
             # Run decomposition
             try:
                 trend, residual = decomp_func(dem, **decomp_params)
             except Exception as e:
                 logger.warning(f"Decomposition failed: {decomp_id}: {e}")
-                failed += len(upsamp_combos) * len(list(upsamp_combos.values())[0]) if upsamp_combos else 1
+                if upsamp_combos:
+                    first_vals = list(upsamp_combos.values())[0]
+                    failed += len(upsamp_combos) * len(first_vals)
+                else:
+                    failed += 1
                 pbar.update(sum(len(v) for v in upsamp_combos.values()))
                 continue
-            
+
             for upsamp_name, upsamp_param_list in upsamp_combos.items():
                 if max_upsamp_combos:
                     upsamp_param_list = upsamp_param_list[:max_upsamp_combos]
-                
+
                 upsamp_method = get_upsampling(upsamp_name)
                 upsamp_func = upsamp_method.func
-                
+
                 for upsamp_params in upsamp_param_list:
                     # Create unique ID for this full configuration
                     upsamp_id = f"{upsamp_name}_" + "_".join(
                         f"{k}{v}" for k, v in sorted(upsamp_params.items())
                     )
                     combo_id = f"{decomp_id}___{upsamp_id}"
-                    
+
                     # Check if already exists
                     result_path = results_dir / f"{combo_id}.npy"
                     if skip_existing and result_path.exists():
                         skipped += 1
                         pbar.update(1)
                         continue
-                    
+
                     # Run upsampling on residual
                     try:
                         residual_up = upsamp_func(residual, **upsamp_params)
-                        
+
                         # Compute statistics
                         stats = compute_statistics(residual_up)
                         result_hash = compute_result_hash(residual_up)
-                        
+
                         # Save result
                         np.save(result_path, residual_up)
-                        
+
                         # Document
                         result_doc = {
-                            'combo_id': combo_id,
-                            'decomposition': {
-                                'name': decomp_name,
-                                'params': decomp_params
-                            },
-                            'upsampling': {
-                                'name': upsamp_name,
-                                'params': upsamp_params
-                            },
-                            'output_shape': list(residual_up.shape),
-                            'statistics': stats,
-                            'hash': result_hash,
-                            'result_file': str(result_path.name)
+                            "combo_id": combo_id,
+                            "decomposition": {"name": decomp_name, "params": decomp_params},
+                            "upsampling": {"name": upsamp_name, "params": upsamp_params},
+                            "output_shape": list(residual_up.shape),
+                            "statistics": stats,
+                            "hash": result_hash,
+                            "result_file": str(result_path.name),
                         }
-                        
-                        master_doc['results'].append(result_doc)
+
+                        master_doc["results"].append(result_doc)
                         completed += 1
-                        
+
                     except Exception as e:
                         logger.warning(f"Failed: {combo_id}: {e}")
                         failed += 1
-                    
+
                     pbar.update(1)
-    
+
     pbar.close()
-    
+
     # Save complete documentation
-    final_doc_path = docs_dir / f'exhaustive_results_{timestamp}.json'
-    with open(final_doc_path, 'w') as f:
+    final_doc_path = docs_dir / f"exhaustive_results_{timestamp}.json"
+    with open(final_doc_path, "w") as f:
         json.dump(master_doc, f, indent=2)
-    
+
     # Generate human-readable prior art document
-    prior_art_path = docs_dir / f'PRIOR_ART_{timestamp}.md'
+    prior_art_path = docs_dir / f"PRIOR_ART_{timestamp}.md"
     generate_prior_art_document(master_doc, prior_art_path)
-    
+
     # Summary
     elapsed = datetime.now() - start_time
     logger.info("\n" + "=" * 60)
@@ -366,18 +358,18 @@ def run_exhaustive_experiment(
     logger.info(f"Results saved to: {results_dir}")
     logger.info(f"Documentation saved to: {docs_dir}")
     logger.info(f"Prior art document: {prior_art_path}")
-    
+
     return master_doc
 
 
 def generate_prior_art_document(doc: dict, output_path: Path):
     """
     Generate human-readable prior art documentation.
-    
+
     This document is designed to be citable and serve as evidence
     of prior disclosure for all tested parameter combinations.
     """
-    
+
     lines = [
         "# RESIDUALS: Exhaustive Parameter Exploration - Prior Art Documentation",
         "",
@@ -394,49 +386,49 @@ def generate_prior_art_document(doc: dict, output_path: Path):
         "### 1.1 Decomposition Methods",
         "",
     ]
-    
-    for name, info in doc['decomposition_methods'].items():
+
+    for name, info in doc["decomposition_methods"].items():
         lines.append(f"#### {name}")
         lines.append(f"- **Category**: {info['category']}")
         lines.append(f"- **Preserves**: {info['preserves']}")
         lines.append(f"- **Destroys**: {info['destroys']}")
         lines.append(f"- **Default Parameters**: `{info['default_params']}`")
-        lines.append(f"- **Parameter Ranges**:")
-        for param, values in info['param_ranges'].items():
+        lines.append("- **Parameter Ranges**:")
+        for param, values in info["param_ranges"].items():
             lines.append(f"  - `{param}`: {values}")
         lines.append(f"- **Total Combinations**: {info['total_combinations']}")
         lines.append("")
-    
+
     lines.append("### 1.2 Upsampling Methods")
     lines.append("")
-    
-    for name, info in doc['upsampling_methods'].items():
+
+    for name, info in doc["upsampling_methods"].items():
         lines.append(f"#### {name}")
         lines.append(f"- **Category**: {info['category']}")
         lines.append(f"- **Preserves**: {info['preserves']}")
         lines.append(f"- **Introduces**: {info['introduces']}")
         lines.append(f"- **Default Parameters**: `{info['default_params']}`")
-        lines.append(f"- **Parameter Ranges**:")
-        for param, values in info['param_ranges'].items():
+        lines.append("- **Parameter Ranges**:")
+        for param, values in info["param_ranges"].items():
             lines.append(f"  - `{param}`: {values}")
         lines.append(f"- **Total Combinations**: {info['total_combinations']}")
         lines.append("")
-    
+
     lines.append("---")
     lines.append("")
     lines.append("## 2. Tested Combinations Summary")
     lines.append("")
     lines.append(f"**Total Combinations Tested**: {len(doc['results'])}")
     lines.append("")
-    
+
     # Group by decomposition method
     by_decomp = {}
-    for result in doc['results']:
-        decomp_name = result['decomposition']['name']
+    for result in doc["results"]:
+        decomp_name = result["decomposition"]["name"]
         if decomp_name not in by_decomp:
             by_decomp[decomp_name] = []
         by_decomp[decomp_name].append(result)
-    
+
     lines.append("### Combinations by Decomposition Method")
     lines.append("")
     lines.append("| Decomposition | Combinations Tested |")
@@ -444,7 +436,7 @@ def generate_prior_art_document(doc: dict, output_path: Path):
     for decomp_name, results in sorted(by_decomp.items()):
         lines.append(f"| {decomp_name} | {len(results)} |")
     lines.append("")
-    
+
     lines.append("---")
     lines.append("")
     lines.append("## 3. Detailed Results")
@@ -452,26 +444,31 @@ def generate_prior_art_document(doc: dict, output_path: Path):
     lines.append("Each combination produces a unique residual image capturing ")
     lines.append("terrain features at specific scales and with specific characteristics.")
     lines.append("")
-    
+
     # Sample of results (not all, to keep document manageable)
     lines.append("### Sample Results (first 50)")
     lines.append("")
     lines.append("| Combo ID | Decomp Params | Upsamp Params | Mean | Std | Hash |")
     lines.append("|----------|---------------|---------------|------|-----|------|")
-    
-    for result in doc['results'][:50]:
-        decomp_params = str(result['decomposition']['params'])
-        upsamp_params = str(result['upsampling']['params'])
-        mean = result['statistics']['mean']
-        std = result['statistics']['std']
-        hash_val = result['hash']
-        
+
+    for result in doc["results"][:50]:
+        decomp_params = str(result["decomposition"]["params"])
+        upsamp_params = str(result["upsampling"]["params"])
+        mean = result["statistics"]["mean"]
+        std = result["statistics"]["std"]
+        hash_val = result["hash"]
+
         # Truncate for table
         decomp_params = decomp_params[:30] + "..." if len(decomp_params) > 30 else decomp_params
         upsamp_params = upsamp_params[:30] + "..." if len(upsamp_params) > 30 else upsamp_params
-        
-        lines.append(f"| {result['combo_id'][:40]}... | {decomp_params} | {upsamp_params} | {mean:.4f} | {std:.4f} | {hash_val} |")
-    
+
+        combo_id_short = result["combo_id"][:40]
+        lines.append(
+            f"| {combo_id_short}... | {decomp_params}"
+            f" | {upsamp_params} | {mean:.4f}"
+            f" | {std:.4f} | {hash_val} |"
+        )
+
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -496,14 +493,14 @@ def generate_prior_art_document(doc: dict, output_path: Path):
     lines.append("claims or patents on these specific applications of signal processing ")
     lines.append("to Digital Elevation Model analysis for feature detection.")
     lines.append("")
-    
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
 
 
 def main():
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="RESIDUALS Exhaustive Parameter Exploration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -513,45 +510,56 @@ This script tests ALL parameter combinations to create comprehensive prior art.
 Examples:
     # Full exhaustive run (may take hours)
     python run_exhaustive.py --dem data/test_dems/fairfield_sample_1.5ft.npy
-    
+
     # Limited run for testing
-    python run_exhaustive.py --dem data/test_dems/fairfield_sample_1.5ft.npy --max-decomp 2 --max-upsamp 2
-    
+    python run_exhaustive.py --dem data/test_dems/fairfield_sample_1.5ft.npy \\
+        --max-decomp 2 --max-upsamp 2
+
     # Resume interrupted run (skip existing)
     python run_exhaustive.py --dem data/test_dems/fairfield_sample_1.5ft.npy --skip-existing
-        """
+        """,
     )
-    
-    parser.add_argument('--dem', type=str, 
-                       default='data/test_dems/fairfield_sample_1.5ft.npy',
-                       help='Path to input DEM (.npy)')
-    parser.add_argument('--output', type=str, default='results/exhaustive',
-                       help='Output directory')
-    parser.add_argument('--max-decomp', type=int, default=None,
-                       help='Max decomposition param combos per method (for testing)')
-    parser.add_argument('--max-upsamp', type=int, default=None,
-                       help='Max upsampling param combos per method (for testing)')
-    parser.add_argument('--skip-existing', action='store_true',
-                       help='Skip combinations with existing results')
-    
+
+    parser.add_argument(
+        "--dem",
+        type=str,
+        default="data/test_dems/fairfield_sample_1.5ft.npy",
+        help="Path to input DEM (.npy)",
+    )
+    parser.add_argument("--output", type=str, default="results/exhaustive", help="Output directory")
+    parser.add_argument(
+        "--max-decomp",
+        type=int,
+        default=None,
+        help="Max decomposition param combos per method (for testing)",
+    )
+    parser.add_argument(
+        "--max-upsamp",
+        type=int,
+        default=None,
+        help="Max upsampling param combos per method (for testing)",
+    )
+    parser.add_argument(
+        "--skip-existing", action="store_true", help="Skip combinations with existing results"
+    )
+
     args = parser.parse_args()
-    
+
     # Check if DEM exists
     dem_path = Path(args.dem)
     if not dem_path.exists():
         logger.error(f"DEM not found: {dem_path}")
         logger.error("Run 'python generate_test_dem.py' first to create test DEM")
         sys.exit(1)
-    
+
     run_exhaustive_experiment(
         dem_path=str(dem_path),
         output_dir=args.output,
         max_decomp_combos=args.max_decomp,
         max_upsamp_combos=args.max_upsamp,
-        skip_existing=args.skip_existing
+        skip_existing=args.skip_existing,
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

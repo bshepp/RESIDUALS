@@ -13,14 +13,12 @@ import pytest
 
 from src.analysis.differential import (
     compute_differential,
-    compute_all_differentials,
-    compute_method_differentials,
 )
 from src.analysis.features import (
     analyze_features,
-    rank_for_features,
     compute_feature_snr,
     compute_spatial_autocorrelation,
+    rank_for_features,
 )
 
 
@@ -78,11 +76,19 @@ class TestAnalyzeFeatures:
         """Analysis should return all expected metric keys."""
         analysis = analyze_features(small_dem)
         expected_keys = [
-            "mean", "std", "min", "max", "range",
-            "skewness", "kurtosis",
-            "linear_feature_count", "max_linear_strength",
+            "mean",
+            "std",
+            "min",
+            "max",
+            "range",
+            "skewness",
+            "kurtosis",
+            "linear_feature_count",
+            "max_linear_strength",
             "spatial_autocorr",
-            "low_freq_energy", "mid_freq_energy", "high_freq_energy",
+            "low_freq_energy",
+            "mid_freq_energy",
+            "high_freq_energy",
             "feature_snr",
         ]
         for key in expected_keys:

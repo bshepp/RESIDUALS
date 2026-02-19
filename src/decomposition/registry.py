@@ -5,14 +5,16 @@ Provides a decorator-based registration system for decomposition methods.
 Each method should return (trend, residual) tuple.
 """
 
-from typing import Dict, Callable, Any, Tuple, List, Optional
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 
 
 @dataclass
 class DecompositionMethod:
     """Metadata for a registered decomposition method."""
+
     name: str
     func: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]]
     category: str
@@ -34,11 +36,11 @@ def register_decomposition(
     param_ranges: Optional[Dict[str, List[Any]]] = None,
     preserves: str = "",
     destroys: str = "",
-    description: str = ""
+    description: str = "",
 ):
     """
     Decorator to register a decomposition method.
-    
+
     Usage:
         @register_decomposition(
             name='gaussian',
@@ -53,6 +55,7 @@ def register_decomposition(
             residual = dem - trend
             return trend, residual
     """
+
     def decorator(func: Callable) -> Callable:
         method = DecompositionMethod(
             name=name,
@@ -62,10 +65,11 @@ def register_decomposition(
             param_ranges=param_ranges or {},
             preserves=preserves,
             destroys=destroys,
-            description=description or func.__doc__ or ""
+            description=description or func.__doc__ or "",
         )
         DECOMPOSITION_REGISTRY[name] = method
         return func
+
     return decorator
 
 
@@ -83,28 +87,26 @@ def list_decompositions() -> List[str]:
 
 
 def run_decomposition(
-    name: str,
-    dem: np.ndarray,
-    params: Optional[Dict[str, Any]] = None
+    name: str, dem: np.ndarray, params: Optional[Dict[str, Any]] = None
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Run a decomposition method on a DEM.
-    
+
     Args:
         name: Method name
         dem: Input DEM array
         params: Optional parameter overrides
-        
+
     Returns:
         (trend, residual) tuple
     """
     method = get_decomposition(name)
-    
+
     # Merge default params with overrides
     run_params = {**method.default_params}
     if params:
         run_params.update(params)
-    
+
     return method.func(dem, **run_params)
 
 
@@ -113,11 +115,10 @@ def get_all_methods_info() -> Dict[str, Dict[str, Any]]:
     info = {}
     for name, method in DECOMPOSITION_REGISTRY.items():
         info[name] = {
-            'category': method.category,
-            'default_params': method.default_params,
-            'preserves': method.preserves,
-            'destroys': method.destroys,
-            'description': method.description
+            "category": method.category,
+            "default_params": method.default_params,
+            "preserves": method.preserves,
+            "destroys": method.destroys,
+            "description": method.description,
         }
     return info
-

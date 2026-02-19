@@ -10,20 +10,19 @@ do what we claim, not just that they run.
 import numpy as np
 import pytest
 
+# Trigger registration
+import src.decomposition.methods  # noqa: F401
+import src.decomposition.methods_extended  # noqa: F401
+import src.upsampling.methods  # noqa: F401
+import src.upsampling.methods_extended  # noqa: F401
 from src.decomposition.registry import run_decomposition
 from src.upsampling.registry import run_upsampling
 from src.utils.preprocessing import fill_nans
 
-# Trigger registration
-import src.decomposition.methods            # noqa: F401
-import src.decomposition.methods_extended   # noqa: F401
-import src.upsampling.methods               # noqa: F401
-import src.upsampling.methods_extended      # noqa: F401
-
-
 # =========================================================================
 # Decomposition known-answer tests
 # =========================================================================
+
 
 class TestGaussianKnownAnswers:
     """Gaussian filter has well-defined behavior on simple inputs."""
@@ -91,7 +90,7 @@ class TestPolynomialKnownAnswers:
         h, w = 64, 64
         y, x = np.mgrid[0:h, 0:w].astype(np.float64)
         plane = 100.0 + 0.5 * x + 0.3 * y
-        bump = 5.0 * np.exp(-((x - 32)**2 + (y - 32)**2) / (2 * 8**2))
+        bump = 5.0 * np.exp(-((x - 32) ** 2 + (y - 32) ** 2) / (2 * 8**2))
         dem = plane + bump
 
         trend, residual = run_decomposition("polynomial", dem, {"degree": 1})
@@ -169,18 +168,14 @@ class TestDoGKnownAnswers:
     def test_constant_dem_zero_residual(self):
         """DoG on constant surface: residual = 0 (no features at any scale)."""
         dem = np.full((64, 64), 100.0)
-        trend, residual = run_decomposition(
-            "dog", dem, {"sigma_low": 2, "sigma_high": 10}
-        )
+        trend, residual = run_decomposition("dog", dem, {"sigma_low": 2, "sigma_high": 10})
         np.testing.assert_allclose(residual, 0.0, atol=1e-10)
 
     def test_reconstruction_exact(self):
         """DoG trend + residual = original."""
         rng = np.random.default_rng(42)
         dem = rng.uniform(800, 900, (64, 64))
-        trend, residual = run_decomposition(
-            "dog", dem, {"sigma_low": 2, "sigma_high": 10}
-        )
+        trend, residual = run_decomposition("dog", dem, {"sigma_low": 2, "sigma_high": 10})
         np.testing.assert_allclose(trend + residual, dem, atol=1e-10)
 
 
@@ -190,9 +185,7 @@ class TestWaveletKnownAnswers:
     def test_constant_dem_zero_residual(self):
         """Wavelet on constant surface: residual ≈ 0."""
         dem = np.full((64, 64), 200.0)
-        trend, residual = run_decomposition(
-            "wavelet_dwt", dem, {"wavelet": "db4", "level": 2}
-        )
+        trend, residual = run_decomposition("wavelet_dwt", dem, {"wavelet": "db4", "level": 2})
         assert np.max(np.abs(residual)) < 0.01, (
             f"Wavelet residual on constant DEM: max={np.max(np.abs(residual))}"
         )
@@ -201,15 +194,14 @@ class TestWaveletKnownAnswers:
         """Wavelet trend + residual should closely match original."""
         rng = np.random.default_rng(7)
         dem = rng.uniform(800, 900, (64, 64))
-        trend, residual = run_decomposition(
-            "wavelet_dwt", dem, {"wavelet": "db4", "level": 2}
-        )
+        trend, residual = run_decomposition("wavelet_dwt", dem, {"wavelet": "db4", "level": 2})
         np.testing.assert_allclose(trend + residual, dem, atol=0.1)
 
 
 # =========================================================================
 # Upsampling known-answer tests
 # =========================================================================
+
 
 class TestUpsamplingKnownAnswers:
     """Upsampling methods should have predictable behavior on simple inputs."""
@@ -250,6 +242,7 @@ class TestUpsamplingKnownAnswers:
 # =========================================================================
 # Preprocessing known-answer tests
 # =========================================================================
+
 
 class TestFillNansKnownAnswers:
     """fill_nans should replace NaN values with the array mean."""
