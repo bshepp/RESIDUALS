@@ -460,48 +460,75 @@ def decompose_anisotropic_diffusion(
 @register_decomposition(
     name="rolling_ball",
     category="morphological",
-    default_params={"radius": 50},
-    param_ranges={"radius": [10, 25, 50, 100, 200]},
+    default_params={
+        "radius": 50,
+        "down_order": 1,
+        "up_order": 3,
+        "target_effective_radius": 75,
+        "large_radius_threshold": 150,
+    },
+    param_ranges={
+        "radius": [10, 25, 50, 100, 200],
+        "down_order": [0, 1, 2, 3],
+        "up_order": [1, 3, 5],
+    },
     preserves="features smaller than ball radius",
     destroys="background curvature, large-scale variation",
 )
-def decompose_rolling_ball(dem: np.ndarray, radius: int = 50) -> tuple:
+def decompose_rolling_ball(
+    dem: np.ndarray,
+    radius: int = 50,
+    down_order: int = 1,
+    up_order: int = 3,
+    target_effective_radius: int = 75,
+    large_radius_threshold: int = 150,
+) -> tuple:
     """
     Rolling ball background subtraction.
 
     Simulates a ball rolling under the surface. Common in microscopy.
     Effective for removing large-scale curvature while preserving local features.
 
-    For large radii (>150), uses a downsampling approach to reduce memory usage
-    while maintaining equivalent results for trend extraction.
+    For large radii (> large_radius_threshold), runs on a downsampled copy of
+    the DEM to bound memory and CPU. The downsample factor is chosen so the
+    effective ball radius on the small grid is ~target_effective_radius.
+
+    Args:
+        radius: Rolling ball radius in pixels. Smaller = finer features kept.
+        down_order: scipy.ndimage.zoom interpolation order used on the
+            downsample step of the round-trip. Default 1 (linear). Previously
+            hardcoded; exposed so it can be swept and recorded.
+        up_order: scipy.ndimage.zoom interpolation order used on the upsample
+            step of the round-trip. Default 3 (cubic). Asymmetric with
+            down_order by historical default — exposed so callers can pick
+            symmetric pairs if they want.
+        target_effective_radius: When downsampling, the ball radius is rescaled
+            so that the small-grid radius is approximately this value. Lower =
+            coarser intermediate grid = faster but blurrier trend. Default 75.
+        large_radius_threshold: Radii above this trigger the downsample
+            round-trip; radii at or below run directly on the full grid.
+            Default 150.
     """
-    from scipy.ndimage import zoom
+    from ..utils.preprocessing import roundtrip_resample
 
     dem_filled = fill_nans(dem)
     original_shape = dem_filled.shape
 
-    # For large radii, use downsampling to reduce memory
-    # Threshold chosen based on memory constraints
-    large_radius_threshold = 150
-
     if radius > large_radius_threshold:
-        # Downsample factor: aim for effective radius of ~75
-        downsample_factor = radius / 75
-
-        # Downsample the DEM
-        dem_small = zoom(dem_filled, 1.0 / downsample_factor, order=1)
+        downsample_factor = radius / target_effective_radius
         effective_radius = int(radius / downsample_factor)
 
-        # Run rolling ball on smaller DEM
-        trend_small = _rolling_ball_core(dem_small, effective_radius)
-
-        # Upsample the trend back to original size
-        trend = zoom(trend_small, downsample_factor, order=3)
-
-        # Handle size mismatch from zoom rounding
-        if trend.shape != original_shape:
-            # Crop or pad to match
-            trend = _match_shape(trend, original_shape)
+        # Run rolling ball on a coarse copy, then round-trip back to full size.
+        # The down/up interpolation orders are deliberately separable kwargs
+        # so the asymmetry shows up in any parameter sweep that records them.
+        trend = roundtrip_resample(
+            dem_filled,
+            factor=downsample_factor,
+            down_order=down_order,
+            up_order=up_order,
+            transform=lambda small: _rolling_ball_core(small, effective_radius),
+            target_shape=original_shape,
+        )
     else:
         trend = _rolling_ball_core(dem_filled, radius)
 
