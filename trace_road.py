@@ -124,9 +124,9 @@ def detect_bearing(dem_path: Path, meta_path: Path) -> float:
     logger.info(f"  Cropped DEM around Hopewell Road: {dem.shape}")
 
     # Compute tophat residual (best performer from demo)
-    import src.decomposition.methods  # noqa: F401
-    import src.decomposition.methods_extended  # noqa: F401
-    from src.decomposition.registry import run_decomposition
+    import residuals.decomposition.methods  # noqa: F401
+    import residuals.decomposition.methods_extended  # noqa: F401
+    from residuals.decomposition.registry import run_decomposition
 
     _, residual = run_decomposition("tophat", dem, {"size": 15, "mode": "white"})
 
@@ -367,7 +367,7 @@ def compute_strip_residuals(dem: np.ndarray) -> dict:
     Returns:
         Dict of {method_name: residual_array}
     """
-    from src.decomposition.registry import run_decomposition
+    from residuals.decomposition.registry import run_decomposition
 
     residuals = {}
     for method_name, params in RESIDUAL_METHODS:
@@ -811,8 +811,8 @@ def main():
     logger.info("=" * 70)
 
     # Import decomposition methods (triggers registration)
-    import src.decomposition.methods  # noqa: F401
-    import src.decomposition.methods_extended  # noqa: F401
+    import residuals.decomposition.methods  # noqa: F401
+    import residuals.decomposition.methods_extended  # noqa: F401
 
     # ---- Step 1: Determine bearing ----
     # The Hopewell Road ran from the Great Circle (Newark) SSW toward

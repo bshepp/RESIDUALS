@@ -22,9 +22,6 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
@@ -42,8 +39,8 @@ def get_all_parameter_combinations():
     Returns dict of:
         method_name: [list of param dicts]
     """
-    from src.decomposition.registry import DECOMPOSITION_REGISTRY
-    from src.upsampling.registry import UPSAMPLING_REGISTRY
+    from residuals.decomposition.registry import DECOMPOSITION_REGISTRY
+    from residuals.upsampling.registry import UPSAMPLING_REGISTRY
 
     all_combos = {"decomposition": {}, "upsampling": {}}
 
@@ -161,9 +158,9 @@ def run_exhaustive_experiment(
         max_upsamp_combos: Limit upsampling combinations (for testing)
         skip_existing: Skip if output already exists
     """
-    from src.decomposition import get_decomposition
-    from src.upsampling import get_upsampling
-    from src.utils import load_dem
+    from residuals.decomposition import get_decomposition
+    from residuals.upsampling import get_upsampling
+    from residuals.utils import load_dem
 
     start_time = datetime.now()
     timestamp = start_time.strftime("%Y%m%d_%H%M%S")
@@ -216,8 +213,8 @@ def run_exhaustive_experiment(
     logger.info("DOCUMENTING ALL METHOD PARAMETER SPACES")
     logger.info("=" * 60)
 
-    from src.decomposition.registry import DECOMPOSITION_REGISTRY
-    from src.upsampling.registry import UPSAMPLING_REGISTRY
+    from residuals.decomposition.registry import DECOMPOSITION_REGISTRY
+    from residuals.upsampling.registry import UPSAMPLING_REGISTRY
 
     for name, method in DECOMPOSITION_REGISTRY.items():
         master_doc["decomposition_methods"][name] = {

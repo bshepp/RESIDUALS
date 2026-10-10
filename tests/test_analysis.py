@@ -11,10 +11,10 @@ Covers:
 import numpy as np
 import pytest
 
-from src.analysis.differential import (
+from residuals.analysis.differential import (
     compute_differential,
 )
-from src.analysis.features import (
+from residuals.analysis.features import (
     analyze_features,
     compute_feature_snr,
     compute_spatial_autocorrelation,

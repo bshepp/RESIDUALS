@@ -12,7 +12,7 @@ Covers:
 import numpy as np
 import pytest
 
-from src.decomposition.registry import (
+from residuals.decomposition.registry import (
     DECOMPOSITION_REGISTRY,
     run_decomposition,
 )
@@ -24,8 +24,8 @@ class TestAllDecompositionMethodsRun:
     @pytest.fixture(autouse=True)
     def _ensure_registered(self):
         # Importing the modules triggers registration
-        import src.decomposition.methods  # noqa: F401
-        import src.decomposition.methods_extended  # noqa: F401
+        import residuals.decomposition.methods  # noqa: F401
+        import residuals.decomposition.methods_extended  # noqa: F401
 
     @pytest.mark.parametrize("method_name", list(DECOMPOSITION_REGISTRY.keys()))
     def test_method_runs(self, small_dem, method_name):

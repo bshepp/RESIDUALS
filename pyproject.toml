@@ -52,7 +52,7 @@ all = ["residuals[geo,dev]"]
 Repository = "https://github.com/bshepp/RESIDUALS"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["residuals"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

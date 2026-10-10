@@ -10,13 +10,13 @@ Covers:
 
 import pytest
 
-from src.decomposition.registry import (
+from residuals.decomposition.registry import (
     DECOMPOSITION_REGISTRY,
     get_all_methods_info,
     get_decomposition,
     list_decompositions,
 )
-from src.upsampling.registry import (
+from residuals.upsampling.registry import (
     UPSAMPLING_REGISTRY,
     get_upsampling,
     list_upsamplings,

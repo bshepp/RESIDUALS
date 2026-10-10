@@ -44,13 +44,13 @@ from scipy.interpolate import griddata
 from shapely.geometry import box
 
 # Trigger method registration
-import src.decomposition.methods  # noqa: F401
-import src.decomposition.methods_extended  # noqa: F401
+import residuals.decomposition.methods  # noqa: F401
+import residuals.decomposition.methods_extended  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Project imports
 # ---------------------------------------------------------------------------
-from src.decomposition.registry import run_decomposition
+from residuals.decomposition.registry import run_decomposition
 
 # ---------------------------------------------------------------------------
 # Logging

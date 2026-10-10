@@ -244,7 +244,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add new methods and submit cha
 
 ```
 RESIDUALS/
-├── src/
+├── residuals/
 │   ├── decomposition/        # 25 decomposition algorithms
 │   ├── upsampling/           # 19 upsampling methods
 │   ├── analysis/             # Differential computation, feature detection

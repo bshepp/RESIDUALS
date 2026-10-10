@@ -12,9 +12,6 @@ from pathlib import Path
 
 import numpy as np
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 

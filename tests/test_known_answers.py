@@ -11,13 +11,13 @@ import numpy as np
 import pytest
 
 # Trigger registration
-import src.decomposition.methods  # noqa: F401
-import src.decomposition.methods_extended  # noqa: F401
-import src.upsampling.methods  # noqa: F401
-import src.upsampling.methods_extended  # noqa: F401
-from src.decomposition.registry import run_decomposition
-from src.upsampling.registry import run_upsampling
-from src.utils.preprocessing import fill_nans
+import residuals.decomposition.methods  # noqa: F401
+import residuals.decomposition.methods_extended  # noqa: F401
+import residuals.upsampling.methods  # noqa: F401
+import residuals.upsampling.methods_extended  # noqa: F401
+from residuals.decomposition.registry import run_decomposition
+from residuals.upsampling.registry import run_upsampling
+from residuals.utils.preprocessing import fill_nans
 
 # =========================================================================
 # Decomposition known-answer tests

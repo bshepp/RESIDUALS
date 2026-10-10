@@ -25,9 +25,6 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
@@ -120,10 +117,10 @@ def run_bestof(
         output_dir: Output directory
         scale: Upsampling scale factor (overrides BESTOF_UPSAMPLINGS default)
     """
-    from src.analysis import analyze_features, generate_analysis_report, rank_for_features
-    from src.decomposition.registry import run_decomposition
-    from src.upsampling.registry import run_upsampling
-    from src.utils import load_dem, visualize_results, visualize_top_results
+    from residuals.analysis import analyze_features, generate_analysis_report, rank_for_features
+    from residuals.decomposition.registry import run_decomposition
+    from residuals.upsampling.registry import run_upsampling
+    from residuals.utils import load_dem, visualize_results, visualize_top_results
 
     start_time = datetime.now()
     output_dir = Path(output_dir)

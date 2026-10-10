@@ -9,8 +9,8 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from src.decomposition.registry import DECOMPOSITION_REGISTRY, run_decomposition
-from src.upsampling.registry import UPSAMPLING_REGISTRY, run_upsampling
+from residuals.decomposition.registry import DECOMPOSITION_REGISTRY, run_decomposition
+from residuals.upsampling.registry import UPSAMPLING_REGISTRY, run_upsampling
 
 
 def parse_filename(filename: str) -> tuple:

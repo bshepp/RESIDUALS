@@ -28,7 +28,7 @@ CI runs both `ruff check` and `ruff format --check` on every push and PR.
 
 ## Adding a New Decomposition Method
 
-All decomposition methods live in `src/decomposition/methods.py` (core) or `src/decomposition/methods_extended.py` (extended). Use the `@register_decomposition` decorator:
+All decomposition methods live in `residuals/decomposition/methods.py` (core) or `residuals/decomposition/methods_extended.py` (extended). Use the `@register_decomposition` decorator:
 
 ```python
 from .registry import register_decomposition
@@ -57,7 +57,7 @@ Requirements:
 
 ## Adding a New Upsampling Method
 
-Same pattern in `src/upsampling/methods.py` or `src/upsampling/methods_extended.py`:
+Same pattern in `residuals/upsampling/methods.py` or `residuals/upsampling/methods_extended.py`:
 
 ```python
 from .registry import register_upsampling

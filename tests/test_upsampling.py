@@ -11,7 +11,7 @@ Covers:
 import numpy as np
 import pytest
 
-from src.upsampling.registry import (
+from residuals.upsampling.registry import (
     UPSAMPLING_REGISTRY,
     run_upsampling,
 )
@@ -39,8 +39,8 @@ class TestAllUpsamplingMethodsRun:
 
     @pytest.fixture(autouse=True)
     def _ensure_registered(self):
-        import src.upsampling.methods  # noqa: F401
-        import src.upsampling.methods_extended  # noqa: F401
+        import residuals.upsampling.methods  # noqa: F401
+        import residuals.upsampling.methods_extended  # noqa: F401
 
     @pytest.mark.parametrize("method_name", list(UPSAMPLING_REGISTRY.keys()))
     def test_method_runs(self, tiny_dem, method_name):

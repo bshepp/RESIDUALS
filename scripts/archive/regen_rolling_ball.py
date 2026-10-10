@@ -3,17 +3,14 @@
 Regenerate rolling_ball_radius200 combinations after fixing the edge case.
 """
 
-import sys
 from itertools import product
 from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from src.decomposition.methods_extended import decompose_rolling_ball
-from src.upsampling.registry import UPSAMPLING_REGISTRY, run_upsampling
+from residuals.decomposition.methods_extended import decompose_rolling_ball
+from residuals.upsampling.registry import UPSAMPLING_REGISTRY, run_upsampling
 
 
 def main():

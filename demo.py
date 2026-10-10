@@ -30,17 +30,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Trigger method registration
-import src.decomposition.methods  # noqa: F401
-import src.decomposition.methods_extended  # noqa: F401
-import src.upsampling.methods  # noqa: F401
-import src.upsampling.methods_extended  # noqa: F401
+import residuals.decomposition.methods  # noqa: F401
+import residuals.decomposition.methods_extended  # noqa: F401
+import residuals.upsampling.methods  # noqa: F401
+import residuals.upsampling.methods_extended  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Project imports
 # ---------------------------------------------------------------------------
-from src.decomposition.registry import run_decomposition
-from src.upsampling.registry import run_upsampling
-from src.utils.dem_io import load_dem
+from residuals.decomposition.registry import run_decomposition
+from residuals.upsampling.registry import run_upsampling
+from residuals.utils.dem_io import load_dem
 
 # ---------------------------------------------------------------------------
 # Config

@@ -15,9 +15,6 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
@@ -45,14 +42,14 @@ def run_experiment(
         decomposition_methods: List of decomposition methods to use
         upsampling_methods: List of upsampling methods to use
     """
-    from src.analysis import (
+    from residuals.analysis import (
         analyze_features,
         generate_analysis_report,
         rank_for_features,
     )
-    from src.decomposition import list_decompositions, run_decomposition
-    from src.upsampling import list_upsamplings, run_upsampling
-    from src.utils import load_dem, visualize_results, visualize_top_results
+    from residuals.decomposition import list_decompositions, run_decomposition
+    from residuals.upsampling import list_upsamplings, run_upsampling
+    from residuals.utils import load_dem, visualize_results, visualize_top_results
 
     start_time = datetime.now()
     output_dir = Path(output_dir)
