@@ -8,18 +8,18 @@ version = "0.1.0"
 description = "Multi-method differential feature detection in Digital Elevation Models"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
-authors = [{ name = "bshepp" }]
+requires-python = ">=3.10"
+authors = [{ name = "Brian Sheppard" }]
 keywords = ["DEM", "LiDAR", "feature-detection", "signal-decomposition", "archaeology"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
@@ -60,7 +60,7 @@ addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
