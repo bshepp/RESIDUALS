@@ -1,6 +1,9 @@
 # RESIDUALS: Multi-Method Differential Feature Detection
 
 [![CI](https://github.com/bshepp/RESIDUALS/actions/workflows/ci.yml/badge.svg)](https://github.com/bshepp/RESIDUALS/actions/workflows/ci.yml)
+[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19903273.svg)](https://doi.org/10.5281/zenodo.19903273)
+[![Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-residuals--fingerprints-yellow)](https://huggingface.co/datasets/bshepp/residuals-fingerprints)
+[![Project Page](https://img.shields.io/badge/project%20page-residuals.briansheppard.com-blue)](https://residuals.briansheppard.com)
 
 **A framework for feature detection in Digital Elevation Models using systematic decomposition and differential analysis.**
 
@@ -192,6 +195,14 @@ Analysis of all 39,731 combinations revealed significant redundancy:
 
 See `results/REDUNDANCY_REPORT.md` for full analysis.
 
+### Published Dataset
+
+The full exhaustive sweep (39,731 residual arrays, 4.28 TB) is archived and citable:
+
+- **Hugging Face**: [bshepp/residuals-fingerprints](https://huggingface.co/datasets/bshepp/residuals-fingerprints)
+- **Zenodo**: [10.5281/zenodo.19903273](https://doi.org/10.5281/zenodo.19903273)
+- **Visual atlas and project page**: [residuals.briansheppard.com](https://residuals.briansheppard.com) (built by [residuals-visuals](https://github.com/bshepp/residuals-visuals))
+
 ## Output Visualization
 
 The main output is a grid showing:
@@ -244,7 +255,11 @@ RESIDUALS/
 │   ├── combinations/         # Raw residual arrays (.npy)
 │   ├── differentials/        # Pairwise differences
 │   ├── visualizations/       # Output images
+│   ├── demo/                 # demo.py output figures (gitignored)
+│   ├── county_tiles/         # County grid tile cache (gitignored, ~103 GB)
+│   ├── hopewell_trace/       # Corridor trace outputs (gitignored)
 │   └── debug_archive/        # Bug documentation
+├── logs/                     # Run logs from long-running scripts (gitignored)
 ├── scripts/archive/          # One-off diagnostic scripts (not part of core)
 ├── .github/workflows/        # CI: lint + test on push/PR
 ├── pyproject.toml            # Package metadata, dependencies, tool config
@@ -279,11 +294,13 @@ See `results/debug_archive/README.md` for documented bugs and fixes.
 
 ## Roadmap
 
-### Phase 1: County Corpus (current)
-Complete the Licking County grid tiling — 200 tiles with cached DEMs, SVF, openness, and multi-scale TopHat residuals. This produces the searchable corpus for all downstream work.
+### Phase 1: County Corpus (complete, February 2026)
+Licking County grid tiling is done: 200 tiles with cached DEMs, SVF, openness, and multi-scale TopHat residuals (~103 GB), plus the Hopewell Road corridor trace. This is the searchable corpus for all downstream work.
 
-### Phase 2: Index the Corpus
-Run [terravector](https://github.com/bshepp/terravector) on the cached DEMs to build an HNSW index of ~1.7 million terrain patches across Licking County. Enable queries like "find all patches that look like the Great Circle mound."
+### Phase 2: Index the Corpus (current)
+Run [terravector](https://github.com/bshepp/terravector) on the cached DEMs to build an HNSW index of ~871K 64×64 terrain patches across Licking County. Enable queries like "find all patches that look like the Great Circle mound."
+
+Status: the embedding config has been validated on a 3-tile subset (13,068 patches) and the county-wide build pipeline exists with per-tile checkpointing. The full build has not been run yet; see terravector for details.
 
 ### Phase 3: Recommendation API
 Build the RESIDUALS-as-a-Service prototype (see `terravector/docs/RESIDUALS_SERVICE_CONCEPT.md`): given a terrain patch, recommend which decomposition method will best reveal its features, using the indexed corpus as training data.
@@ -318,13 +335,25 @@ Contributions welcome across any roadmap phase. See [CONTRIBUTING.md](CONTRIBUTI
 
 ## Citation
 
-If you use RESIDUALS in research, please cite:
+If you use RESIDUALS in research, please cite the software:
 ```
 @software{residuals2025,
   title={RESIDUALS: Multi-Method Differential Feature Detection},
-  author={bshepp},
+  author={Sheppard, Brian},
   year={2025},
   url={https://github.com/bshepp/RESIDUALS}
+}
+```
+
+If you use the exhaustive sweep data, please also cite the dataset:
+```
+@dataset{residuals_fingerprints2026,
+  title={RESIDUALS Fingerprints: 39,731 residual arrays from an exhaustive decomposition × upsampling sweep},
+  author={Sheppard, Brian},
+  year={2026},
+  publisher={Zenodo},
+  doi={10.5281/zenodo.19903273},
+  url={https://doi.org/10.5281/zenodo.19903273}
 }
 ```
 
