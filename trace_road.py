@@ -37,11 +37,13 @@ from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter
 from shapely.geometry import box
 
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("trace_road.log"),
+        logging.FileHandler(LOG_DIR / "trace_road.log"),
         logging.StreamHandler(),
     ],
 )

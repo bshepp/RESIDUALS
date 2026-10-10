@@ -440,8 +440,8 @@ Examples:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("demo_output.png"),
-        help="Output figure path.  Default: demo_output.png",
+        default=Path("results/demo/demo_output.png"),
+        help="Output figure path.  Default: results/demo/demo_output.png",
     )
     parser.add_argument("--scale", type=int, default=2, help="Upsampling scale factor.  Default: 2")
     parser.add_argument(
@@ -451,6 +451,7 @@ Examples:
         help="Crop to named site (e.g. hopewell_road, great_circle)",
     )
     args = parser.parse_args()
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     run_demo(args.dem, args.output, args.scale, args.site, args.meta)
 
 

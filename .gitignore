@@ -45,16 +45,10 @@ data/test_dems/*.tif
 !data/test_dems/fairfield_sample_*.npy
 
 # Demo output images (regenerable)
-demo_output.png
-demo_hopewell_road.png
-demo_great_circle.png
+results/demo/
 
-# Temporary script output
-dem_gen_output.txt
-test_output.txt
-trace_test_output.txt
-trace_*_output.txt
-county_run*.log
+# Run logs and captured script output (regenerable)
+logs/
 
 # Trace corridor outputs (large, regenerable)
 results/hopewell_trace/
@@ -83,8 +77,6 @@ results/visualizations/*_preview.png
 
 # Logs
 *.log
-experiment.log
-exhaustive_experiment.log
 
 # OS
 .DS_Store

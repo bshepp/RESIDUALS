@@ -55,11 +55,13 @@ from src.decomposition.registry import run_decomposition
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("tile_county.log"),
+        logging.FileHandler(LOG_DIR / "tile_county.log"),
         logging.StreamHandler(),
     ],
 )

@@ -25,10 +25,12 @@ from tqdm import tqdm
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("exhaustive_experiment.log"), logging.StreamHandler()],
+    handlers=[logging.FileHandler(LOG_DIR / "exhaustive_experiment.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
