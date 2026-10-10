@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "residuals"
-version = "0.1.0"
+version = "0.2.0"
 description = "Multi-method differential feature detection in Digital Elevation Models"
 readme = "README.md"
 license = "Apache-2.0"
