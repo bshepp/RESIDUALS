@@ -300,7 +300,7 @@ Licking County grid tiling is done: 200 tiles with cached DEMs, SVF, openness, a
 ### Phase 2: Index the Corpus (current)
 Run [terravector](https://github.com/bshepp/terravector) on the cached DEMs to build an HNSW index of ~871K 64×64 terrain patches across Licking County. Enable queries like "find all patches that look like the Great Circle mound."
 
-Status: the embedding config has been validated on a 3-tile subset (13,068 patches) and the county-wide build pipeline exists with per-tile checkpointing. The full build has not been run yet; see terravector for details.
+Status: the county-wide index exists. All 200 tiles are embedded (858,642 patches at 640 dimensions) and assembled into a single HNSW index, most recently rebuilt on 2026-10-13 after the signed-log1p normalization fix. Similarity queries and the county-wide similarity raster run against it today; see terravector for details.
 
 ### Phase 3: Recommendation API
 Build the RESIDUALS-as-a-Service prototype (see `terravector/docs/RESIDUALS_SERVICE_CONCEPT.md`): given a terrain patch, recommend which decomposition method will best reveal its features, using the indexed corpus as training data.
