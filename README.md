@@ -157,7 +157,7 @@ Each tile's 12-panel figure includes:
 
 Outputs:
 - `results/county_tiles/R04_C08.png` — 12-panel visualization per tile
-- `results/county_tiles/R04_C08_dem.npy` — cached DEM array (~143 MB)
+- `results/county_tiles/R04_C08_dem.npy` — cached DEM array (~143 MB). Tile rows are numbered from the **south** (R00 is the southernmost row) and the array is **south-up**: row 0 is the tile's southern edge, so plot with `origin="lower"` and flip before writing a north-up GeoTIFF. Downstream consumers (terravector) must use this convention.
 - `results/county_tiles/R04_C08_svf.npy` — cached Sky-View Factor (~71 MB)
 - `results/county_tiles/index_map.png` — county overview with numbered tile boxes
 - `results/county_tiles/metadata.json` — grid dimensions and processing status
